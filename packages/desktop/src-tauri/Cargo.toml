@@ -2,7 +2,7 @@
 name = "stud-desktop"
 version = "0.0.0"
 description = "AI-powered Roblox development tool"
-authors = ["Stud"]
+authors = ["improdead", "madebyshaurya"]
 edition = "2024"
 
 [lib]

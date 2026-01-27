@@ -2,6 +2,11 @@
   "$schema": "https://json.schemastore.org/package.json",
   "name": "stud",
   "description": "AI-powered Roblox development tool",
+  "author": "improdead",
+  "contributors": [
+    "improdead",
+    "madebyshaurya"
+  ],
   "private": true,
   "type": "module",
   "packageManager": "bun@1.3.5",

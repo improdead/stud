@@ -10,26 +10,145 @@
 	   - Mac: ~/Documents/Roblox/Plugins
 	2. Restart Roblox Studio
 	3. Enable HTTP requests in Game Settings > Security
-	4. The plugin will start listening for Stud connections
+	4. Click the Stud button to connect
 ]]
 
 local HttpService = game:GetService("HttpService")
 local Selection = game:GetService("Selection")
 local ScriptEditorService = game:GetService("ScriptEditorService")
 
-local PORT = 3002
 local PLUGIN_NAME = "Stud"
+local POLL_URL = "http://localhost:3001/stud/poll"
+local RESPOND_URL = "http://localhost:3001/stud/respond"
 
--- Create toolbar and button
+-- State
+local isConnected = false
+local isConnecting = false
+local pollingEnabled = false
+
+-- UI Elements
 local toolbar = plugin:CreateToolbar(PLUGIN_NAME)
 local toggleButton = toolbar:CreateButton(
-	"Toggle Server",
-	"Enable/disable Stud connection",
+	"Stud",
+	"Connect to Stud AI",
 	"rbxassetid://4458901886"
 )
 
-local serverEnabled = true
-local statusLabel = nil
+-- Colors
+local Colors = {
+	bg = Color3.fromRGB(25, 25, 28),
+	disconnected = Color3.fromRGB(255, 85, 85),
+	connecting = Color3.fromRGB(255, 170, 50),
+	connected = Color3.fromRGB(85, 255, 127),
+	text = Color3.fromRGB(220, 220, 220),
+	textDim = Color3.fromRGB(140, 140, 140),
+}
+
+-- Widget UI
+local widget
+local statusDot
+local statusText
+local subText
+
+local function createWidget()
+	local info = DockWidgetPluginGuiInfo.new(
+		Enum.InitialDockState.Float,
+		true,  -- Initially enabled
+		false, -- Override previous state
+		240,   -- Width
+		80,    -- Height
+		200,   -- Min width
+		70     -- Min height
+	)
+	
+	widget = plugin:CreateDockWidgetPluginGui("StudConnection", info)
+	widget.Title = "Stud"
+	widget.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	
+	-- Main container
+	local container = Instance.new("Frame")
+	container.Name = "Container"
+	container.Size = UDim2.new(1, 0, 1, 0)
+	container.BackgroundColor3 = Colors.bg
+	container.BorderSizePixel = 0
+	container.Parent = widget
+	
+	-- Padding
+	local padding = Instance.new("UIPadding")
+	padding.PaddingTop = UDim.new(0, 12)
+	padding.PaddingBottom = UDim.new(0, 12)
+	padding.PaddingLeft = UDim.new(0, 16)
+	padding.PaddingRight = UDim.new(0, 16)
+	padding.Parent = container
+	
+	-- Status row
+	local statusRow = Instance.new("Frame")
+	statusRow.Name = "StatusRow"
+	statusRow.Size = UDim2.new(1, 0, 0, 24)
+	statusRow.BackgroundTransparency = 1
+	statusRow.Parent = container
+	
+	-- Status dot (indicator)
+	statusDot = Instance.new("Frame")
+	statusDot.Name = "Dot"
+	statusDot.Size = UDim2.new(0, 12, 0, 12)
+	statusDot.Position = UDim2.new(0, 0, 0.5, -6)
+	statusDot.BackgroundColor3 = Colors.disconnected
+	statusDot.BorderSizePixel = 0
+	statusDot.Parent = statusRow
+	
+	local dotCorner = Instance.new("UICorner")
+	dotCorner.CornerRadius = UDim.new(1, 0)
+	dotCorner.Parent = statusDot
+	
+	-- Status text
+	statusText = Instance.new("TextLabel")
+	statusText.Name = "Status"
+	statusText.Size = UDim2.new(1, -20, 1, 0)
+	statusText.Position = UDim2.new(0, 20, 0, 0)
+	statusText.BackgroundTransparency = 1
+	statusText.TextColor3 = Colors.text
+	statusText.Text = "Disconnected"
+	statusText.TextSize = 16
+	statusText.Font = Enum.Font.GothamBold
+	statusText.TextXAlignment = Enum.TextXAlignment.Left
+	statusText.Parent = statusRow
+	
+	-- Sub text (instructions)
+	subText = Instance.new("TextLabel")
+	subText.Name = "SubText"
+	subText.Size = UDim2.new(1, 0, 0, 20)
+	subText.Position = UDim2.new(0, 0, 0, 32)
+	subText.BackgroundTransparency = 1
+	subText.TextColor3 = Colors.textDim
+	subText.Text = "Click toolbar button to connect"
+	subText.TextSize = 12
+	subText.Font = Enum.Font.Gotham
+	subText.TextXAlignment = Enum.TextXAlignment.Left
+	subText.TextWrapped = true
+	subText.Parent = container
+	
+	return widget
+end
+
+local function updateUI()
+	if isConnecting then
+		statusDot.BackgroundColor3 = Colors.connecting
+		statusText.Text = "Connecting..."
+		subText.Text = "Looking for Stud Desktop"
+		toggleButton:SetActive(true)
+	elseif isConnected then
+		statusDot.BackgroundColor3 = Colors.connected
+		statusText.Text = "Connected"
+		subText.Text = "Ready for AI commands"
+		toggleButton:SetActive(true)
+	else
+		statusDot.BackgroundColor3 = Colors.disconnected
+		statusText.Text = "Disconnected"
+		subText.Text = "Click toolbar button to connect"
+		toggleButton:SetActive(false)
+	end
+end
 
 -- Utility functions
 local function jsonEncode(data)
@@ -41,7 +160,6 @@ local function jsonDecode(str)
 end
 
 local function getInstanceFromPath(path)
-	-- Parse paths like "game.Workspace.Part" or "game.ServerScriptService.Script"
 	local parts = string.split(path, ".")
 	if #parts < 2 or parts[1] ~= "game" then
 		return nil
@@ -186,11 +304,9 @@ handlers["/instance/properties"] = function(data)
 		error("Instance not found: " .. data.path)
 	end
 	
-	-- Get common properties based on class
 	local props = {}
 	local commonProps = {"Name", "ClassName", "Parent"}
 	
-	-- Add BasePart properties
 	if instance:IsA("BasePart") then
 		local partProps = {"Position", "Size", "CFrame", "Anchored", "CanCollide", "Transparency", "BrickColor", "Material"}
 		for _, p in ipairs(partProps) do
@@ -198,7 +314,6 @@ handlers["/instance/properties"] = function(data)
 		end
 	end
 	
-	-- Add GuiObject properties
 	if instance:IsA("GuiObject") then
 		local guiProps = {"Position", "Size", "Visible", "BackgroundColor3", "BackgroundTransparency"}
 		for _, p in ipairs(guiProps) do
@@ -230,7 +345,6 @@ handlers["/instance/set"] = function(data)
 	
 	local value = data.value
 	
-	-- Try to parse the value based on common types
 	if value == "true" then
 		value = true
 	elseif value == "false" then
@@ -238,11 +352,9 @@ handlers["/instance/set"] = function(data)
 	elseif tonumber(value) then
 		value = tonumber(value)
 	elseif string.match(value, "^%d+,%s*%d+,%s*%d+$") then
-		-- Vector3 or Color3
 		local parts = string.split(value, ",")
 		local a, b, c = tonumber(parts[1]), tonumber(parts[2]), tonumber(parts[3])
 		if a and b and c then
-			-- Determine if it's a color (0-255 range) or vector
 			if a <= 255 and b <= 255 and c <= 255 and string.find(data.property, "Color") then
 				value = Color3.fromRGB(a, b, c)
 			else
@@ -250,13 +362,11 @@ handlers["/instance/set"] = function(data)
 			end
 		end
 	elseif string.match(value, "^#%x%x%x%x%x%x$") then
-		-- Hex color
 		local r = tonumber(string.sub(value, 2, 3), 16)
 		local g = tonumber(string.sub(value, 4, 5), 16)
 		local b = tonumber(string.sub(value, 6, 7), 16)
 		value = Color3.fromRGB(r, g, b)
 	elseif string.match(value, "^Enum%.") then
-		-- Enum value
 		local parts = string.split(value, ".")
 		if #parts == 3 then
 			local enumType = Enum[parts[2]]
@@ -366,7 +476,6 @@ end
 handlers["/code/run"] = function(data)
 	local output = {}
 	
-	-- Capture print output
 	local oldPrint = print
 	print = function(...)
 		local args = {...}
@@ -434,13 +543,11 @@ local function handleRequest(request)
 	}
 end
 
--- Polling mechanism for communication with Stud desktop app
--- The desktop app runs a local server that this plugin polls for requests
-local pollingEnabled = false
-local POLL_URL = "http://localhost:3001/stud/poll"
-local RESPOND_URL = "http://localhost:3001/stud/respond"
-
+-- Polling loop
 local function pollServer()
+	local failCount = 0
+	local maxFails = 3
+	
 	while pollingEnabled do
 		local success, response = pcall(function()
 			return HttpService:RequestAsync({
@@ -450,6 +557,15 @@ local function pollServer()
 		end)
 		
 		if success and response.Success then
+			-- Connected!
+			if not isConnected then
+				isConnected = true
+				isConnecting = false
+				failCount = 0
+				updateUI()
+				print("[Stud] Connected to Stud Desktop")
+			end
+			
 			local data = jsonDecode(response.Body)
 			if data and data.request then
 				local result = handleRequest(data.request)
@@ -465,59 +581,52 @@ local function pollServer()
 					})
 				end)
 			end
+			failCount = 0
+		else
+			failCount = failCount + 1
+			if isConnected and failCount >= maxFails then
+				isConnected = false
+				isConnecting = true
+				updateUI()
+				print("[Stud] Connection lost, retrying...")
+			end
 		end
 		
 		task.wait(0.1)
 	end
+	
+	-- Stopped polling
+	isConnected = false
+	isConnecting = false
+	updateUI()
 end
 
--- Create status widget
-local function createWidget()
-	local widgetInfo = DockWidgetPluginGuiInfo.new(
-		Enum.InitialDockState.Float,
-		false,
-		false,
-		200,
-		100,
-		150,
-		80
-	)
+-- Toggle connection
+local function toggleConnection()
+	pollingEnabled = not pollingEnabled
 	
-	local widget = plugin:CreateDockWidgetPluginGui("StudStatus", widgetInfo)
-	widget.Title = "Stud"
-	
-	local frame = Instance.new("Frame")
-	frame.Size = UDim2.new(1, 0, 1, 0)
-	frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-	frame.Parent = widget
-	
-	statusLabel = Instance.new("TextLabel")
-	statusLabel.Size = UDim2.new(1, -20, 1, -20)
-	statusLabel.Position = UDim2.new(0, 10, 0, 10)
-	statusLabel.BackgroundTransparency = 1
-	statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-	statusLabel.Text = "Stud: Ready"
-	statusLabel.TextSize = 14
-	statusLabel.Font = Enum.Font.SourceSans
-	statusLabel.Parent = frame
-	
-	return widget
+	if pollingEnabled then
+		isConnecting = true
+		updateUI()
+		print("[Stud] Connecting...")
+		task.spawn(pollServer)
+	else
+		isConnected = false
+		isConnecting = false
+		updateUI()
+		print("[Stud] Disconnected")
+	end
 end
 
 -- Initialize
-local widget = createWidget()
+createWidget()
+updateUI()
 
+toggleButton.Click:Connect(toggleConnection)
+
+-- Show widget when button clicked
 toggleButton.Click:Connect(function()
-	serverEnabled = not serverEnabled
-	pollingEnabled = serverEnabled
-	
-	if statusLabel then
-		statusLabel.Text = serverEnabled and "Stud: Ready" or "Stud: Disabled"
-	end
-	
-	if pollingEnabled then
-		task.spawn(pollServer)
-	end
+	widget.Enabled = true
 end)
 
-print("[Stud] Plugin loaded - Ready for connections")
+print("[Stud] Plugin loaded - Click the Stud button to connect")

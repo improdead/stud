@@ -85,6 +85,7 @@ interface ToolboxAssetDetails {
   fiatProduct: {
     isFree: boolean
     purchasable: boolean
+    published?: boolean
   }
 }
 
@@ -191,15 +192,22 @@ Example: Search "car" in Models category to find free car models.`,
     }
 
     // Step 3: Filter and format results
-    let assets = detailsResult.data!.data
-    if (freeOnly) {
-      assets = assets.filter((a) => a.fiatProduct.isFree)
-    }
+    // Only show assets that are:
+    // 1. Free (if freeOnly is true)
+    // 2. Purchasable (can actually be inserted/used)
+    // 3. Published (publicly available)
+    let assets = detailsResult.data!.data.filter((a) => {
+      const canUse = a.fiatProduct.purchasable && a.fiatProduct.published !== false
+      if (freeOnly) {
+        return a.fiatProduct.isFree && canUse
+      }
+      return canUse
+    })
 
     if (assets.length === 0) {
       return {
         title: `Search: ${params.keyword}`,
-        output: `No free ${category.toLowerCase()} found for "${params.keyword}". Try setting freeOnly: false to see paid assets.`,
+        output: `No usable free ${category.toLowerCase()} found for "${params.keyword}". Try setting freeOnly: false to see paid assets.`,
         metadata: { keyword: params.keyword, category, resultCount: 0 },
       }
     }
@@ -208,11 +216,10 @@ Example: Search "car" in Models category to find free car models.`,
       const verified = a.creator.isVerifiedCreator ? " ✓" : ""
       const scripts = a.asset.hasScripts ? ` | ${a.asset.scriptCount} scripts` : ""
       const votes = a.voting.voteCount > 0 ? ` | ${a.voting.upVotePercent}% liked (${a.voting.voteCount} votes)` : ""
-      const free = a.fiatProduct.isFree ? "Free" : "Paid"
 
       return (
         `[${a.asset.id}] ${a.asset.name}\n` +
-        `  ${getAssetTypeName(a.asset.typeId)} | ${free} | By: ${a.creator.name}${verified}${scripts}${votes}`
+        `  ${getAssetTypeName(a.asset.typeId)} | Free | By: ${a.creator.name}${verified}${scripts}${votes}`
       )
     })
 

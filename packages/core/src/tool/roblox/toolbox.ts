@@ -216,10 +216,12 @@ Example: Search "car" in Models category to find free car models.`,
       const verified = a.creator.isVerifiedCreator ? " ✓" : ""
       const scripts = a.asset.hasScripts ? ` | ${a.asset.scriptCount} scripts` : ""
       const votes = a.voting.voteCount > 0 ? ` | ${a.voting.upVotePercent}% liked (${a.voting.voteCount} votes)` : ""
+      const thumb = `https://www.roblox.com/asset-thumbnail/image?assetId=${a.asset.id}&width=150&height=150&format=png`
 
       return (
         `[${a.asset.id}] ${a.asset.name}\n` +
-        `  ${getAssetTypeName(a.asset.typeId)} | Free | By: ${a.creator.name}${verified}${scripts}${votes}`
+        `  ${getAssetTypeName(a.asset.typeId)} | Free | By: ${a.creator.name}${verified}${scripts}${votes}\n` +
+        `  Thumbnail: ${thumb}`
       )
     })
 
@@ -229,14 +231,101 @@ Example: Search "car" in Models category to find free car models.`,
       output.push(`\nMore results available (${searchResult.data!.totalResults} total).`)
     }
 
-    output.push(`\nTo insert an asset into your game:`)
-    output.push(`  local asset = game:GetService("InsertService"):LoadAsset(ASSET_ID)`)
-    output.push(`  asset.Parent = workspace`)
+    output.push(`\nTo insert an asset into your game, use the roblox_insert_asset tool with the asset ID.`)
+    output.push(`Or manually: game:GetService("InsertService"):LoadAsset(ASSET_ID).Parent = workspace`)
 
     return {
       title: `${category}: ${params.keyword}`,
       output: output.join("\n"),
       metadata: { keyword: params.keyword, category, resultCount: assets.length },
+    }
+  },
+})
+
+const THUMBNAIL_API = "https://thumbnails.roblox.com/v1/assets"
+
+function getThumbnailUrl(assetId: number): string {
+  return `${THUMBNAIL_API}?assetIds=${assetId}&size=150x150&format=Png`
+}
+
+export const RobloxInsertAssetTool = Tool.define<
+  z.ZodObject<{
+    assetId: z.ZodNumber
+    parent: z.ZodOptional<z.ZodString>
+    name: z.ZodOptional<z.ZodString>
+  }>,
+  { assetId: number; inserted: boolean }
+>("roblox_insert_asset", {
+  description: `Insert a toolbox asset into the game.
+
+Uses InsertService:LoadAsset() to fetch and insert the asset from Roblox's servers.
+The asset must be free and publicly available.
+
+The inserted asset will be a Model containing the asset's contents.
+Use roblox_toolbox_search to find asset IDs.
+
+Examples:
+- Insert a car model: assetId=17158839996, parent="game.Workspace"
+- Insert into specific folder: assetId=123456, parent="game.Workspace.Models"`,
+  parameters: z.object({
+    assetId: z.number().describe("The asset ID to insert (from toolbox search)"),
+    parent: z.string().optional().describe("Parent path for the asset (default: game.Workspace)"),
+    name: z.string().optional().describe("Optional name for the inserted model"),
+  }),
+  async execute(params) {
+    const { studioRequest, isStudioConnected, notConnectedError } = await import("./client")
+
+    if (!(await isStudioConnected())) {
+      return {
+        title: "Not connected",
+        output: notConnectedError(),
+        metadata: { assetId: params.assetId, inserted: false },
+      }
+    }
+
+    const parentPath = params.parent || "game.Workspace"
+    const nameAssignment = params.name ? `model.Name = "${params.name}"` : ""
+
+    const code = `
+local InsertService = game:GetService("InsertService")
+local success, result = pcall(function()
+  local model = InsertService:LoadAsset(${params.assetId})
+  if model then
+    ${nameAssignment}
+    model.Parent = ${parentPath}
+    return model:GetFullName()
+  end
+  return nil
+end)
+if success and result then
+  print("Inserted at: " .. result)
+else
+  error(result or "Failed to insert asset")
+end
+`
+
+    const result = await studioRequest<{ output: string; error?: string }>("/code/run", { code })
+
+    if (!result.success) {
+      return {
+        title: `Insert ${params.assetId}`,
+        output: `Error: ${result.error}`,
+        metadata: { assetId: params.assetId, inserted: false },
+      }
+    }
+
+    if (result.data.error) {
+      return {
+        title: `Insert ${params.assetId}`,
+        output: `Failed to insert asset: ${result.data.error}`,
+        metadata: { assetId: params.assetId, inserted: false },
+      }
+    }
+
+    return {
+      title: `Inserted ${params.assetId}`,
+      output: result.data.output || `Asset ${params.assetId} inserted into ${parentPath}`,
+      metadata: { assetId: params.assetId, inserted: true },
     }
   },
 })
@@ -285,6 +374,7 @@ The asset ID can be used with InsertService:LoadAsset() to insert the asset into
       `Asset ID: ${a.asset.id}`,
       `Type: ${getAssetTypeName(a.asset.typeId)}`,
       `Category: ${a.asset.categoryPath || "N/A"}`,
+      `Thumbnail: https://www.roblox.com/asset-thumbnail/image?assetId=${a.asset.id}&width=420&height=420&format=png`,
       ``,
       `Description:`,
       a.asset.description || "(No description)",
@@ -295,7 +385,7 @@ The asset ID can be used with InsertService:LoadAsset() to insert the asset into
       `Purchasable: ${a.fiatProduct.purchasable ? "Yes" : "No"}`,
       ``,
       `Votes: ${a.voting.upVotePercent}% liked (${a.voting.voteCount} total)`,
-      `  👍 ${a.voting.upVotes}  👎 ${a.voting.downVotes}`,
+      `  Up: ${a.voting.upVotes}  Down: ${a.voting.downVotes}`,
       ``,
       `Scripts: ${a.asset.hasScripts ? `Yes (${a.asset.scriptCount} scripts)` : "No"}`,
       `Endorsed: ${a.asset.isEndorsed ? "Yes" : "No"}`,
@@ -303,9 +393,7 @@ The asset ID can be used with InsertService:LoadAsset() to insert the asset into
       `Created: ${a.asset.createdUtc}`,
       `Updated: ${a.asset.updatedUtc}`,
       ``,
-      `To insert this asset in Roblox:`,
-      `  local asset = game:GetService("InsertService"):LoadAsset(${a.asset.id})`,
-      `  asset.Parent = workspace`,
+      `To insert this asset, use the roblox_insert_asset tool with assetId=${a.asset.id}`,
     ]
 
     return {

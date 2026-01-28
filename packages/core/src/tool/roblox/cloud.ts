@@ -307,7 +307,6 @@ Requires ROBLOX_API_KEY with datastores-write permission.`,
     universeId: z.string().optional().describe("Universe ID (uses ROBLOX_UNIVERSE_ID env var if not provided)"),
     scope: z.string().optional().describe("DataStore scope (default: global)"),
   }),
-  requiresConfirmation: true,
   async execute(params) {
     const id = params.universeId || getUniverseId()
     if (!id) {
@@ -362,7 +361,7 @@ interface PublishResponse {
 export const RobloxPublishPlaceTool = Tool.define<
   z.ZodObject<{
     placeId: z.ZodString
-    versionType: z.ZodOptional<z.ZodEnum<["Saved", "Published"]>>
+    versionType: z.ZodOptional<z.ZodString>
     universeId: z.ZodOptional<z.ZodString>
   }>,
   { universeId: string; placeId: string }
@@ -377,13 +376,9 @@ WARNING: Publishing makes changes live to all players.
 Requires ROBLOX_API_KEY with place-publish permission.`,
   parameters: z.object({
     placeId: z.string().describe("The Place ID to publish"),
-    versionType: z
-      .enum(["Saved", "Published"])
-      .optional()
-      .describe("Version type: 'Saved' or 'Published' (default: Published)"),
+    versionType: z.string().optional().describe("Version type: 'Saved' or 'Published' (default: Published)"),
     universeId: z.string().optional().describe("Universe ID (uses ROBLOX_UNIVERSE_ID env var if not provided)"),
   }),
-  requiresConfirmation: true,
   async execute(params) {
     const id = params.universeId || getUniverseId()
     if (!id) {
@@ -414,6 +409,278 @@ Requires ROBLOX_API_KEY with place-publish permission.`,
       title: `Publish ${params.placeId}`,
       output: `Successfully ${versionType === "Published" ? "published" : "saved"} place ${params.placeId}.\n\nRevision ID: ${data.revisionId}\nCreated: ${data.revisionCreateTime}`,
       metadata: { universeId: id, placeId: params.placeId },
+    }
+  },
+})
+
+// OrderedDataStore types
+interface OrderedDataStoreListResponse {
+  entries: Array<{ path: string; id: string; value: number }>
+  nextPageToken?: string
+}
+
+interface OrderedDataStoreEntry {
+  path: string
+  id: string
+  value: number
+}
+
+export const RobloxOrderedDataStoreListTool = Tool.define<
+  z.ZodObject<{
+    datastoreName: z.ZodString
+    universeId: z.ZodOptional<z.ZodString>
+    scope: z.ZodOptional<z.ZodString>
+    maxPageSize: z.ZodOptional<z.ZodNumber>
+    ascending: z.ZodOptional<z.ZodBoolean>
+  }>,
+  { universeId: string; datastoreName: string }
+>("roblox_ordered_datastore_list", {
+  description: `List entries from an OrderedDataStore (sorted by value).
+
+OrderedDataStores are used for leaderboards, rankings, and sorted data.
+Returns entries sorted by value (descending by default for leaderboards).
+
+Use ascending=true to get lowest values first.
+
+Requires ROBLOX_API_KEY with ordered-datastores-read permission.`,
+  parameters: z.object({
+    datastoreName: z.string().describe("Name of the OrderedDataStore"),
+    universeId: z.string().optional().describe("Universe ID (uses ROBLOX_UNIVERSE_ID env var if not provided)"),
+    scope: z.string().optional().describe("DataStore scope (default: global)"),
+    maxPageSize: z.number().min(1).max(100).optional().describe("Max entries to return (1-100, default: 10)"),
+    ascending: z.boolean().optional().describe("Sort ascending (lowest first) instead of descending"),
+  }),
+  async execute(params) {
+    const id = params.universeId || getUniverseId()
+    if (!id) {
+      return {
+        title: "OrderedDataStore List",
+        output: noUniverseIdError(),
+        metadata: { universeId: "", datastoreName: params.datastoreName },
+      }
+    }
+
+    const scope = params.scope || "global"
+    const maxPageSize = params.maxPageSize || 10
+    const order = params.ascending ? "asc" : "desc"
+
+    const endpoint = `/ordered-data-stores/v1/universes/${id}/orderedDataStores/${encodeURIComponent(params.datastoreName)}/scopes/${encodeURIComponent(scope)}/entries?max_page_size=${maxPageSize}&order_by=value ${order}`
+
+    const result = await cloudRequest<OrderedDataStoreListResponse>(endpoint)
+    if (!result.success) {
+      return {
+        title: params.datastoreName,
+        output: `Error: ${result.error}`,
+        metadata: { universeId: id, datastoreName: params.datastoreName },
+      }
+    }
+
+    const entries = result.data!.entries || []
+    if (entries.length === 0) {
+      return {
+        title: params.datastoreName,
+        output: `No entries found in OrderedDataStore "${params.datastoreName}".`,
+        metadata: { universeId: id, datastoreName: params.datastoreName },
+      }
+    }
+
+    const lines = entries.map((e, i) => `${i + 1}. ${e.id}: ${e.value}`).join("\n")
+    const output = [
+      `OrderedDataStore: ${params.datastoreName}`,
+      `Scope: ${scope}`,
+      `Order: ${params.ascending ? "Ascending" : "Descending"}`,
+      ``,
+      `Entries:`,
+      lines,
+    ]
+
+    if (result.data!.nextPageToken) {
+      output.push(`\n(More entries available)`)
+    }
+
+    return {
+      title: `${params.datastoreName} (${entries.length})`,
+      output: output.join("\n"),
+      metadata: { universeId: id, datastoreName: params.datastoreName },
+    }
+  },
+})
+
+export const RobloxOrderedDataStoreGetTool = Tool.define<
+  z.ZodObject<{
+    datastoreName: z.ZodString
+    entryId: z.ZodString
+    universeId: z.ZodOptional<z.ZodString>
+    scope: z.ZodOptional<z.ZodString>
+  }>,
+  { universeId: string; datastoreName: string; entryId: string }
+>("roblox_ordered_datastore_get", {
+  description: `Get a specific entry from an OrderedDataStore.
+
+Returns the numeric value for the given entry ID.
+
+Requires ROBLOX_API_KEY with ordered-datastores-read permission.`,
+  parameters: z.object({
+    datastoreName: z.string().describe("Name of the OrderedDataStore"),
+    entryId: z.string().describe("The entry ID (usually a player UserId)"),
+    universeId: z.string().optional().describe("Universe ID (uses ROBLOX_UNIVERSE_ID env var if not provided)"),
+    scope: z.string().optional().describe("DataStore scope (default: global)"),
+  }),
+  async execute(params) {
+    const id = params.universeId || getUniverseId()
+    if (!id) {
+      return {
+        title: "OrderedDataStore Get",
+        output: noUniverseIdError(),
+        metadata: { universeId: "", datastoreName: params.datastoreName, entryId: params.entryId },
+      }
+    }
+
+    const scope = params.scope || "global"
+    const endpoint = `/ordered-data-stores/v1/universes/${id}/orderedDataStores/${encodeURIComponent(params.datastoreName)}/scopes/${encodeURIComponent(scope)}/entries/${encodeURIComponent(params.entryId)}`
+
+    const result = await cloudRequest<OrderedDataStoreEntry>(endpoint)
+    if (!result.success) {
+      return {
+        title: `${params.datastoreName}/${params.entryId}`,
+        output: `Error: ${result.error}`,
+        metadata: { universeId: id, datastoreName: params.datastoreName, entryId: params.entryId },
+      }
+    }
+
+    const entry = result.data!
+    return {
+      title: `${params.datastoreName}/${params.entryId}`,
+      output: `Entry: ${params.entryId}\nValue: ${entry.value}`,
+      metadata: { universeId: id, datastoreName: params.datastoreName, entryId: params.entryId },
+    }
+  },
+})
+
+export const RobloxOrderedDataStoreSetTool = Tool.define<
+  z.ZodObject<{
+    datastoreName: z.ZodString
+    entryId: z.ZodString
+    value: z.ZodNumber
+    universeId: z.ZodOptional<z.ZodString>
+    scope: z.ZodOptional<z.ZodString>
+  }>,
+  { universeId: string; datastoreName: string; entryId: string }
+>("roblox_ordered_datastore_set", {
+  description: `Set an entry in an OrderedDataStore.
+
+Creates or updates an entry with the specified numeric value.
+OrderedDataStores only support integer values.
+
+WARNING: This modifies production data.
+
+Requires ROBLOX_API_KEY with ordered-datastores-write permission.`,
+  parameters: z.object({
+    datastoreName: z.string().describe("Name of the OrderedDataStore"),
+    entryId: z.string().describe("The entry ID (usually a player UserId)"),
+    value: z.number().int().describe("The numeric value to set (must be an integer)"),
+    universeId: z.string().optional().describe("Universe ID (uses ROBLOX_UNIVERSE_ID env var if not provided)"),
+    scope: z.string().optional().describe("DataStore scope (default: global)"),
+  }),
+  async execute(params) {
+    const id = params.universeId || getUniverseId()
+    if (!id) {
+      return {
+        title: "OrderedDataStore Set",
+        output: noUniverseIdError(),
+        metadata: { universeId: "", datastoreName: params.datastoreName, entryId: params.entryId },
+      }
+    }
+
+    const scope = params.scope || "global"
+    const endpoint = `/ordered-data-stores/v1/universes/${id}/orderedDataStores/${encodeURIComponent(params.datastoreName)}/scopes/${encodeURIComponent(scope)}/entries/${encodeURIComponent(params.entryId)}`
+
+    const result = await cloudRequest<OrderedDataStoreEntry>(endpoint, {
+      method: "PATCH",
+      body: JSON.stringify({ value: params.value }),
+    })
+
+    if (!result.success) {
+      // Try POST if PATCH fails (create new entry)
+      const createResult = await cloudRequest<OrderedDataStoreEntry>(endpoint, {
+        method: "POST",
+        body: JSON.stringify({ value: params.value }),
+      })
+
+      if (!createResult.success) {
+        return {
+          title: `${params.datastoreName}/${params.entryId}`,
+          output: `Error: ${createResult.error}`,
+          metadata: { universeId: id, datastoreName: params.datastoreName, entryId: params.entryId },
+        }
+      }
+    }
+
+    return {
+      title: `${params.datastoreName}/${params.entryId}`,
+      output: `Set ${params.entryId} = ${params.value} in OrderedDataStore "${params.datastoreName}"`,
+      metadata: { universeId: id, datastoreName: params.datastoreName, entryId: params.entryId },
+    }
+  },
+})
+
+export const RobloxOrderedDataStoreIncrementTool = Tool.define<
+  z.ZodObject<{
+    datastoreName: z.ZodString
+    entryId: z.ZodString
+    increment: z.ZodNumber
+    universeId: z.ZodOptional<z.ZodString>
+    scope: z.ZodOptional<z.ZodString>
+  }>,
+  { universeId: string; datastoreName: string; entryId: string }
+>("roblox_ordered_datastore_increment", {
+  description: `Increment an entry in an OrderedDataStore.
+
+Atomically increments the value by the specified amount.
+Use negative numbers to decrement.
+
+This is useful for scores, counters, and leaderboards.
+
+Requires ROBLOX_API_KEY with ordered-datastores-write permission.`,
+  parameters: z.object({
+    datastoreName: z.string().describe("Name of the OrderedDataStore"),
+    entryId: z.string().describe("The entry ID (usually a player UserId)"),
+    increment: z.number().int().describe("Amount to increment by (use negative to decrement)"),
+    universeId: z.string().optional().describe("Universe ID (uses ROBLOX_UNIVERSE_ID env var if not provided)"),
+    scope: z.string().optional().describe("DataStore scope (default: global)"),
+  }),
+  async execute(params) {
+    const id = params.universeId || getUniverseId()
+    if (!id) {
+      return {
+        title: "OrderedDataStore Increment",
+        output: noUniverseIdError(),
+        metadata: { universeId: "", datastoreName: params.datastoreName, entryId: params.entryId },
+      }
+    }
+
+    const scope = params.scope || "global"
+    const endpoint = `/ordered-data-stores/v1/universes/${id}/orderedDataStores/${encodeURIComponent(params.datastoreName)}/scopes/${encodeURIComponent(scope)}/entries/${encodeURIComponent(params.entryId)}:increment`
+
+    const result = await cloudRequest<OrderedDataStoreEntry>(endpoint, {
+      method: "POST",
+      body: JSON.stringify({ amount: params.increment }),
+    })
+
+    if (!result.success) {
+      return {
+        title: `${params.datastoreName}/${params.entryId}`,
+        output: `Error: ${result.error}`,
+        metadata: { universeId: id, datastoreName: params.datastoreName, entryId: params.entryId },
+      }
+    }
+
+    const entry = result.data!
+    const sign = params.increment >= 0 ? "+" : ""
+    return {
+      title: `${params.datastoreName}/${params.entryId}`,
+      output: `Incremented ${params.entryId} by ${sign}${params.increment}\nNew value: ${entry.value}`,
+      metadata: { universeId: id, datastoreName: params.datastoreName, entryId: params.entryId },
     }
   },
 })

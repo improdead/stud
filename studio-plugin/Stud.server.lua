@@ -16,6 +16,7 @@
 local HttpService = game:GetService("HttpService")
 local Selection = game:GetService("Selection")
 local ScriptEditorService = game:GetService("ScriptEditorService")
+local ChangeHistoryService = game:GetService("ChangeHistoryService")
 
 local PLUGIN_NAME = "Stud"
 local POLL_URL = "http://localhost:3001/stud/poll"
@@ -430,6 +431,113 @@ handlers["/instance/clone"] = function(data)
 	return { path = getInstancePath(clone) }
 end
 
+handlers["/instance/move"] = function(data)
+	local instance = getInstanceFromPath(data.path)
+	if not instance then
+		error("Instance not found: " .. data.path)
+	end
+	
+	local newParent = getInstanceFromPath(data.newParent)
+	if not newParent then
+		error("Parent not found: " .. data.newParent)
+	end
+	
+	instance.Parent = newParent
+	
+	return { path = getInstancePath(instance) }
+end
+
+handlers["/instance/bulk-create"] = function(data)
+	local created = {}
+	
+	for _, item in ipairs(data.instances) do
+		local parent = getInstanceFromPath(item.parent)
+		if parent then
+			local instance = Instance.new(item.className)
+			if item.name then
+				instance.Name = item.name
+			end
+			instance.Parent = parent
+			table.insert(created, getInstancePath(instance))
+		end
+	end
+	
+	return { created = created }
+end
+
+handlers["/instance/bulk-delete"] = function(data)
+	local deleted = {}
+	
+	for _, path in ipairs(data.paths) do
+		local instance = getInstanceFromPath(path)
+		if instance then
+			local fullPath = getInstancePath(instance)
+			instance:Destroy()
+			table.insert(deleted, fullPath)
+		end
+	end
+	
+	return { deleted = deleted }
+end
+
+handlers["/instance/bulk-set"] = function(data)
+	local updated = 0
+	local errors = {}
+	
+	for _, op in ipairs(data.operations) do
+		local instance = getInstanceFromPath(op.path)
+		if not instance then
+			table.insert(errors, "Not found: " .. op.path)
+		else
+			local success, err = pcall(function()
+				local value = op.value
+				
+				-- Parse value based on type
+				if value == "true" then
+					value = true
+				elseif value == "false" then
+					value = false
+				elseif tonumber(value) then
+					value = tonumber(value)
+				elseif string.match(value, "^%d+,%s*%d+,%s*%d+$") then
+					local parts = string.split(value, ",")
+					local a, b, c = tonumber(parts[1]), tonumber(parts[2]), tonumber(parts[3])
+					if a and b and c then
+						if a <= 255 and b <= 255 and c <= 255 and string.find(op.property, "Color") then
+							value = Color3.fromRGB(a, b, c)
+						else
+							value = Vector3.new(a, b, c)
+						end
+					end
+				elseif string.match(value, "^#%x%x%x%x%x%x$") then
+					local r = tonumber(string.sub(value, 2, 3), 16)
+					local g = tonumber(string.sub(value, 4, 5), 16)
+					local b = tonumber(string.sub(value, 6, 7), 16)
+					value = Color3.fromRGB(r, g, b)
+				elseif string.match(value, "^Enum%.") then
+					local parts = string.split(value, ".")
+					if #parts == 3 then
+						local enumType = Enum[parts[2]]
+						if enumType then
+							value = enumType[parts[3]]
+						end
+					end
+				end
+				
+				instance[op.property] = value
+			end)
+			
+			if success then
+				updated = updated + 1
+			else
+				table.insert(errors, op.path .. "." .. op.property .. ": " .. tostring(err))
+			end
+		end
+	end
+	
+	return { updated = updated, errors = errors }
+end
+
 handlers["/instance/search"] = function(data)
 	local root = getInstanceFromPath(data.root or "game")
 	if not root then
@@ -508,6 +616,21 @@ handlers["/code/run"] = function(data)
 	return { output = table.concat(output, "\n") }
 end
 
+-- Paths that modify the game and should create undo waypoints
+local modifyingPaths = {
+	["/script/set"] = true,
+	["/script/edit"] = true,
+	["/instance/set"] = true,
+	["/instance/create"] = true,
+	["/instance/delete"] = true,
+	["/instance/clone"] = true,
+	["/instance/move"] = true,
+	["/instance/bulk-create"] = true,
+	["/instance/bulk-delete"] = true,
+	["/instance/bulk-set"] = true,
+	["/code/run"] = true,
+}
+
 -- HTTP request handler
 local function handleRequest(request)
 	local path = request.path or request.Path
@@ -529,12 +652,23 @@ local function handleRequest(request)
 		end
 	end
 	
+	-- Create undo waypoint for modifying operations
+	local isModifying = modifyingPaths[path]
+	if isModifying then
+		ChangeHistoryService:SetWaypoint("Stud: " .. path)
+	end
+	
 	local success, result = pcall(handler, data)
 	if not success then
 		return {
 			status = 500,
 			body = jsonEncode({ error = tostring(result) })
 		}
+	end
+	
+	-- Commit the change so it can be undone
+	if isModifying then
+		ChangeHistoryService:SetWaypoint("Stud: " .. path .. " (done)")
 	end
 	
 	return {

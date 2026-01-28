@@ -11,6 +11,10 @@ export {
   RobloxSearchTool,
   RobloxGetSelectionTool,
   RobloxRunCodeTool,
+  RobloxMoveTool,
+  RobloxBulkCreateTool,
+  RobloxBulkDeleteTool,
+  RobloxBulkSetPropertyTool,
 } from "./instance"
 export {
   RobloxUniverseInfoTool,
@@ -18,5 +22,9 @@ export {
   RobloxDataStoreGetTool,
   RobloxDataStoreSetTool,
   RobloxPublishPlaceTool,
+  RobloxOrderedDataStoreListTool,
+  RobloxOrderedDataStoreGetTool,
+  RobloxOrderedDataStoreSetTool,
+  RobloxOrderedDataStoreIncrementTool,
 } from "./cloud"
-export { RobloxToolboxSearchTool, RobloxAssetDetailsTool } from "./toolbox"
+export { RobloxToolboxSearchTool, RobloxAssetDetailsTool, RobloxInsertAssetTool } from "./toolbox"

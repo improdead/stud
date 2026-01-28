@@ -40,13 +40,22 @@ import {
   RobloxSearchTool,
   RobloxGetSelectionTool,
   RobloxRunCodeTool,
+  RobloxMoveTool,
+  RobloxBulkCreateTool,
+  RobloxBulkDeleteTool,
+  RobloxBulkSetPropertyTool,
   RobloxUniverseInfoTool,
   RobloxDataStoreListTool,
   RobloxDataStoreGetTool,
   RobloxDataStoreSetTool,
   RobloxPublishPlaceTool,
+  RobloxOrderedDataStoreListTool,
+  RobloxOrderedDataStoreGetTool,
+  RobloxOrderedDataStoreSetTool,
+  RobloxOrderedDataStoreIncrementTool,
   RobloxToolboxSearchTool,
   RobloxAssetDetailsTool,
+  RobloxInsertAssetTool,
 } from "./roblox"
 
 export namespace ToolRegistry {
@@ -149,18 +158,29 @@ export namespace ToolRegistry {
       RobloxCreateTool,
       RobloxDeleteTool,
       RobloxCloneTool,
+      RobloxMoveTool,
       RobloxSearchTool,
       RobloxGetSelectionTool,
       RobloxRunCodeTool,
+      // Roblox Bulk operations
+      RobloxBulkCreateTool,
+      RobloxBulkDeleteTool,
+      RobloxBulkSetPropertyTool,
       // Roblox Cloud API tools
       RobloxUniverseInfoTool,
       RobloxDataStoreListTool,
       RobloxDataStoreGetTool,
       RobloxDataStoreSetTool,
       RobloxPublishPlaceTool,
+      // Roblox OrderedDataStore tools
+      RobloxOrderedDataStoreListTool,
+      RobloxOrderedDataStoreGetTool,
+      RobloxOrderedDataStoreSetTool,
+      RobloxOrderedDataStoreIncrementTool,
       // Roblox Toolbox/Catalog tools
       RobloxToolboxSearchTool,
       RobloxAssetDetailsTool,
+      RobloxInsertAssetTool,
       ...custom,
     ]
   }

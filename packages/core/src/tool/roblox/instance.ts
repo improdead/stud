@@ -409,3 +409,217 @@ Examples:
     }
   },
 })
+
+export const RobloxMoveTool = Tool.define<
+  z.ZodObject<{
+    path: z.ZodString
+    newParent: z.ZodString
+  }>,
+  { path: string }
+>("roblox_move", {
+  description: `Move an instance to a new parent (reparent).
+
+Changes the Parent property of the instance to the new location.
+The instance keeps all its properties and children.
+
+Examples:
+- Move a part to a folder: path="game.Workspace.Part1", newParent="game.Workspace.MyFolder"
+- Move a script to ServerScriptService: path="game.Workspace.Script", newParent="game.ServerScriptService"`,
+  parameters: z.object({
+    path: z.string().describe("Full instance path to move"),
+    newParent: z.string().describe("Full path to the new parent"),
+  }),
+  async execute(params) {
+    if (!(await isStudioConnected())) {
+      return { title: "Not connected", output: notConnectedError(), metadata: { path: params.path } }
+    }
+
+    const result = await studioRequest<{ path: string }>("/instance/move", {
+      path: params.path,
+      newParent: params.newParent,
+    })
+
+    if (!result.success) {
+      return { title: params.path, output: `Error: ${result.error}`, metadata: { path: params.path } }
+    }
+
+    return {
+      title: result.data.path,
+      output: `Moved to ${result.data.path}`,
+      metadata: { path: result.data.path },
+    }
+  },
+})
+
+interface BulkCreateItem {
+  className: string
+  parent: string
+  name?: string
+}
+
+export const RobloxBulkCreateTool = Tool.define<
+  z.ZodObject<{
+    instances: z.ZodArray<
+      z.ZodObject<{
+        className: z.ZodString
+        parent: z.ZodString
+        name: z.ZodOptional<z.ZodString>
+      }>
+    >
+  }>,
+  { count: number }
+>("roblox_bulk_create", {
+  description: `Create multiple instances at once.
+
+More efficient than calling roblox_create multiple times.
+Each item specifies className, parent, and optional name.
+
+Example: Create 5 parts in workspace
+[
+  { className: "Part", parent: "game.Workspace", name: "Part1" },
+  { className: "Part", parent: "game.Workspace", name: "Part2" },
+  ...
+]`,
+  parameters: z.object({
+    instances: z
+      .array(
+        z.object({
+          className: z.string().describe("Class name of the instance"),
+          parent: z.string().describe("Parent path"),
+          name: z.string().optional().describe("Optional name"),
+        }),
+      )
+      .describe("Array of instances to create"),
+  }),
+  async execute(params) {
+    if (!(await isStudioConnected())) {
+      return { title: "Not connected", output: notConnectedError(), metadata: { count: 0 } }
+    }
+
+    const result = await studioRequest<{ created: string[] }>("/instance/bulk-create", {
+      instances: params.instances,
+    })
+
+    if (!result.success) {
+      return { title: "Bulk create", output: `Error: ${result.error}`, metadata: { count: 0 } }
+    }
+
+    const paths = result.data.created
+    return {
+      title: `Created ${paths.length}`,
+      output: `Created ${paths.length} instance(s):\n${paths.map((p) => `- ${p}`).join("\n")}`,
+      metadata: { count: paths.length },
+    }
+  },
+})
+
+export const RobloxBulkDeleteTool = Tool.define<
+  z.ZodObject<{
+    paths: z.ZodArray<z.ZodString>
+  }>,
+  { count: number }
+>("roblox_bulk_delete", {
+  description: `Delete multiple instances at once.
+
+More efficient than calling roblox_delete multiple times.
+All specified instances and their descendants will be destroyed.
+
+WARNING: This cannot be undone through the tool.`,
+  parameters: z.object({
+    paths: z.array(z.string()).describe("Array of instance paths to delete"),
+  }),
+  async execute(params, ctx) {
+    if (!(await isStudioConnected())) {
+      return { title: "Not connected", output: notConnectedError(), metadata: { count: 0 } }
+    }
+
+    await ctx.ask({
+      permission: "write",
+      patterns: params.paths,
+      always: [],
+      metadata: {},
+    })
+
+    const result = await studioRequest<{ deleted: string[] }>("/instance/bulk-delete", {
+      paths: params.paths,
+    })
+
+    if (!result.success) {
+      return { title: "Bulk delete", output: `Error: ${result.error}`, metadata: { count: 0 } }
+    }
+
+    const deleted = result.data.deleted
+    return {
+      title: `Deleted ${deleted.length}`,
+      output: `Deleted ${deleted.length} instance(s):\n${deleted.map((p) => `- ${p}`).join("\n")}`,
+      metadata: { count: deleted.length },
+    }
+  },
+})
+
+interface BulkSetItem {
+  path: string
+  property: string
+  value: string
+}
+
+export const RobloxBulkSetPropertyTool = Tool.define<
+  z.ZodObject<{
+    operations: z.ZodArray<
+      z.ZodObject<{
+        path: z.ZodString
+        property: z.ZodString
+        value: z.ZodString
+      }>
+    >
+  }>,
+  { count: number }
+>("roblox_bulk_set_property", {
+  description: `Set properties on multiple instances at once.
+
+More efficient than calling roblox_set_property multiple times.
+Each operation specifies path, property name, and value.
+
+Example: Make all parts red and anchored
+[
+  { path: "game.Workspace.Part1", property: "BrickColor", value: "Bright red" },
+  { path: "game.Workspace.Part1", property: "Anchored", value: "true" },
+  { path: "game.Workspace.Part2", property: "BrickColor", value: "Bright red" },
+  ...
+]`,
+  parameters: z.object({
+    operations: z
+      .array(
+        z.object({
+          path: z.string().describe("Instance path"),
+          property: z.string().describe("Property name"),
+          value: z.string().describe("New value"),
+        }),
+      )
+      .describe("Array of property set operations"),
+  }),
+  async execute(params) {
+    if (!(await isStudioConnected())) {
+      return { title: "Not connected", output: notConnectedError(), metadata: { count: 0 } }
+    }
+
+    const result = await studioRequest<{ updated: number; errors?: string[] }>("/instance/bulk-set", {
+      operations: params.operations,
+    })
+
+    if (!result.success) {
+      return { title: "Bulk set", output: `Error: ${result.error}`, metadata: { count: 0 } }
+    }
+
+    const output = [`Updated ${result.data.updated} properties`]
+    if (result.data.errors && result.data.errors.length > 0) {
+      output.push(`\nErrors:\n${result.data.errors.map((e) => `- ${e}`).join("\n")}`)
+    }
+
+    return {
+      title: `Set ${result.data.updated} properties`,
+      output: output.join("\n"),
+      metadata: { count: result.data.updated },
+    }
+  },
+})

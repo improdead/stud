@@ -19,6 +19,13 @@ import { showToast } from "@stud/ui/toast"
 
 type ServerStatus = { healthy: boolean; version?: string }
 
+type BridgeStatus = {
+  running: boolean
+  connected: boolean
+  pendingRequests: number
+  lastPollTime: number
+}
+
 async function checkHealth(url: string, platform: ReturnType<typeof usePlatform>): Promise<ServerStatus> {
   const signal = (AbortSignal as unknown as { timeout?: (ms: number) => AbortSignal }).timeout?.(3000)
   const sdk = createOpencodeClient({
@@ -30,6 +37,26 @@ async function checkHealth(url: string, platform: ReturnType<typeof usePlatform>
     .health()
     .then((x) => ({ healthy: x.data?.healthy === true, version: x.data?.version }))
     .catch(() => ({ healthy: false }))
+}
+
+async function checkBridgeStatus(): Promise<BridgeStatus> {
+  try {
+    const response = await fetch("http://localhost:3001/stud/status", {
+      signal: AbortSignal.timeout(1000),
+    })
+    if (!response.ok) {
+      return { running: false, connected: false, pendingRequests: 0, lastPollTime: 0 }
+    }
+    const data = await response.json()
+    return {
+      running: true,
+      connected: data.connected === true,
+      pendingRequests: data.pendingRequests ?? 0,
+      lastPollTime: data.lastPollTime ?? 0,
+    }
+  } catch {
+    return { running: false, connected: false, pendingRequests: 0, lastPollTime: 0 }
+  }
 }
 
 export function StatusPopover() {
@@ -45,6 +72,7 @@ export function StatusPopover() {
     status: {} as Record<string, ServerStatus | undefined>,
     loading: null as string | null,
     defaultServerUrl: undefined as string | undefined,
+    bridge: { running: false, connected: false, pendingRequests: 0, lastPollTime: 0 } as BridgeStatus,
   })
 
   const servers = createMemo(() => {
@@ -84,11 +112,21 @@ export function StatusPopover() {
     setStore("status", reconcile(results))
   }
 
+  async function refreshBridgeStatus() {
+    const status = await checkBridgeStatus()
+    setStore("bridge", status)
+  }
+
   createEffect(() => {
     servers()
     refreshHealth()
-    const interval = setInterval(refreshHealth, 10_000)
-    onCleanup(() => clearInterval(interval))
+    refreshBridgeStatus()
+    const healthInterval = setInterval(refreshHealth, 10_000)
+    const bridgeInterval = setInterval(refreshBridgeStatus, 2_000)
+    onCleanup(() => {
+      clearInterval(healthInterval)
+      clearInterval(bridgeInterval)
+    })
   })
 
   const mcpItems = createMemo(() =>
@@ -189,6 +227,9 @@ export function StatusPopover() {
             <Tabs.Trigger value="servers" data-slot="tab" class="text-12-regular">
               {serverCount() > 0 ? `${serverCount()} ` : ""}
               {language.t("status.popover.tab.servers")}
+            </Tabs.Trigger>
+            <Tabs.Trigger value="bridge" data-slot="tab" class="text-12-regular">
+              Bridge
             </Tabs.Trigger>
             <Tabs.Trigger value="mcp" data-slot="tab" class="text-12-regular">
               {mcpConnected() > 0 ? `${mcpConnected()} ` : ""}
@@ -295,6 +336,79 @@ export function StatusPopover() {
                   onClick={() => dialog.show(() => <DialogSelectServer />, refreshDefaultServerUrl)}
                 >
                   {language.t("status.popover.action.manageServers")}
+                </Button>
+              </div>
+            </div>
+          </Tabs.Content>
+
+          <Tabs.Content value="bridge">
+            <div class="flex flex-col px-2 pb-2">
+              <div class="flex flex-col p-3 bg-background-base rounded-sm min-h-14 gap-3">
+                <div class="flex items-center gap-2">
+                  <div
+                    classList={{
+                      "size-2 rounded-full shrink-0": true,
+                      "bg-icon-success-base": store.bridge.connected,
+                      "bg-icon-warning-base": store.bridge.running && !store.bridge.connected,
+                      "bg-icon-critical-base": !store.bridge.running,
+                    }}
+                  />
+                  <span class="text-14-medium text-text-strong">Roblox Studio</span>
+                  <span class="text-12-regular text-text-weak ml-auto">
+                    {store.bridge.connected
+                      ? "Connected"
+                      : store.bridge.running
+                        ? "Waiting for plugin..."
+                        : "Bridge not running"}
+                  </span>
+                </div>
+
+                <Show when={store.bridge.running}>
+                  <div class="flex flex-col gap-1 text-12-regular text-text-weak">
+                    <div class="flex justify-between">
+                      <span>Bridge Server</span>
+                      <span class="text-text-base">localhost:3001</span>
+                    </div>
+                    <Show when={store.bridge.pendingRequests > 0}>
+                      <div class="flex justify-between">
+                        <span>Pending Requests</span>
+                        <span class="text-text-base">{store.bridge.pendingRequests}</span>
+                      </div>
+                    </Show>
+                  </div>
+                </Show>
+
+                <Show when={!store.bridge.connected}>
+                  <div class="text-12-regular text-text-weak bg-surface-base p-2 rounded-sm">
+                    <Show
+                      when={store.bridge.running}
+                      fallback={
+                        <p>
+                          The bridge server is not running. Start the Stud desktop app to enable Studio integration.
+                        </p>
+                      }
+                    >
+                      <p>To connect Roblox Studio:</p>
+                      <ol class="list-decimal list-inside mt-1 space-y-0.5">
+                        <li>Open Roblox Studio</li>
+                        <li>Enable HTTP Requests in Game Settings</li>
+                        <li>Click the Stud toolbar button</li>
+                      </ol>
+                    </Show>
+                  </div>
+                </Show>
+
+                <Show when={store.bridge.connected}>
+                  <div class="text-12-regular text-text-weak bg-surface-base p-2 rounded-sm">
+                    <p>Studio operations create undo waypoints.</p>
+                    <p class="mt-1">
+                      Use <code class="bg-surface-raised-base px-1 rounded">Ctrl+Z</code> in Studio to undo AI changes.
+                    </p>
+                  </div>
+                </Show>
+
+                <Button variant="secondary" class="self-start h-8 px-3 py-1.5" onClick={() => refreshBridgeStatus()}>
+                  Refresh
                 </Button>
               </div>
             </div>

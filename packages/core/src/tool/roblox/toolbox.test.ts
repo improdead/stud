@@ -1,5 +1,11 @@
 import { describe, test, expect } from "bun:test"
-import { RobloxToolboxSearchTool, RobloxAssetDetailsTool, AssetCategories, getAssetTypeName } from "./toolbox"
+import {
+  RobloxToolboxSearchTool,
+  RobloxAssetDetailsTool,
+  RobloxInsertAssetTool,
+  AssetCategories,
+  getAssetTypeName,
+} from "./toolbox"
 
 // Test the AssetCategories mapping
 describe("AssetCategories", () => {
@@ -168,12 +174,12 @@ describe("RobloxAssetDetailsTool integration", () => {
 
     expect(result.metadata.assetId).toBe(47433)
 
-    // Should have asset info
+    // Should have asset info in markdown format
     if (!result.output.includes("Error")) {
-      expect(result.output).toContain("Name:")
-      expect(result.output).toContain("Asset ID: 47433")
+      expect(result.output).toContain("# ")
+      expect(result.output).toContain("Asset ID | 47433")
       expect(result.output).toContain("Free")
-      expect(result.output).toContain("InsertService")
+      expect(result.output).toContain("roblox_insert_asset")
     }
   }, 30000)
 
@@ -193,8 +199,72 @@ describe("RobloxAssetDetailsTool integration", () => {
 
     // May be rate limited, so check for either success or error
     if (!result.output.includes("Error") && !result.output.includes("not found")) {
-      expect(result.output).toContain("InsertService")
-      expect(result.output).toContain("LoadAsset")
+      expect(result.output).toContain("roblox_insert_asset")
     }
   }, 30000)
+})
+
+describe("RobloxInsertAssetTool", () => {
+  test("should be defined with correct id", () => {
+    expect(RobloxInsertAssetTool.id).toBe("roblox_insert_asset")
+  })
+
+  test("should have required parameters", async () => {
+    const tool = await RobloxInsertAssetTool.init()
+    const shape = tool.parameters.shape
+
+    expect(shape.assetId).toBeDefined()
+    expect(shape.parent).toBeDefined()
+    expect(shape.name).toBeDefined()
+  })
+
+  test("should validate assetId is required", async () => {
+    const tool = await RobloxInsertAssetTool.init()
+
+    const result = tool.parameters.safeParse({})
+    expect(result.success).toBe(false)
+  })
+
+  test("should validate assetId is a number", async () => {
+    const tool = await RobloxInsertAssetTool.init()
+
+    expect(tool.parameters.safeParse({ assetId: 12345 }).success).toBe(true)
+    expect(tool.parameters.safeParse({ assetId: "12345" }).success).toBe(false)
+  })
+
+  test("should accept optional parent parameter", async () => {
+    const tool = await RobloxInsertAssetTool.init()
+
+    const result = tool.parameters.safeParse({
+      assetId: 12345,
+      parent: "game.Workspace.MyFolder",
+    })
+    expect(result.success).toBe(true)
+    expect(result.data?.parent).toBe("game.Workspace.MyFolder")
+  })
+
+  test("should accept optional name parameter", async () => {
+    const tool = await RobloxInsertAssetTool.init()
+
+    const result = tool.parameters.safeParse({
+      assetId: 12345,
+      name: "MyCar",
+    })
+    expect(result.success).toBe(true)
+    expect(result.data?.name).toBe("MyCar")
+  })
+
+  test("should accept all parameters together", async () => {
+    const tool = await RobloxInsertAssetTool.init()
+
+    const result = tool.parameters.safeParse({
+      assetId: 12345,
+      parent: "game.Workspace.Models",
+      name: "ImportedModel",
+    })
+    expect(result.success).toBe(true)
+    expect(result.data?.assetId).toBe(12345)
+    expect(result.data?.parent).toBe("game.Workspace.Models")
+    expect(result.data?.name).toBe("ImportedModel")
+  })
 })

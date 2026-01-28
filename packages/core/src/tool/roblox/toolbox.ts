@@ -213,15 +213,15 @@ Example: Search "car" in Models category to find free car models.`,
     }
 
     const details = assets.map((a) => {
-      const verified = a.creator.isVerifiedCreator ? " ✓" : ""
+      const verified = a.creator.isVerifiedCreator ? " (Verified)" : ""
       const scripts = a.asset.hasScripts ? ` | ${a.asset.scriptCount} scripts` : ""
       const votes = a.voting.voteCount > 0 ? ` | ${a.voting.upVotePercent}% liked (${a.voting.voteCount} votes)` : ""
       const thumb = `https://www.roblox.com/asset-thumbnail/image?assetId=${a.asset.id}&width=150&height=150&format=png`
 
       return (
-        `[${a.asset.id}] ${a.asset.name}\n` +
-        `  ${getAssetTypeName(a.asset.typeId)} | Free | By: ${a.creator.name}${verified}${scripts}${votes}\n` +
-        `  Thumbnail: ${thumb}`
+        `### [${a.asset.id}] ${a.asset.name}\n\n` +
+        `![${a.asset.name}](${thumb})\n\n` +
+        `${getAssetTypeName(a.asset.typeId)} | Free | By: ${a.creator.name}${verified}${scripts}${votes}`
       )
     })
 
@@ -369,31 +369,32 @@ The asset ID can be used with InsertService:LoadAsset() to insert the asset into
     const verified = a.creator.isVerifiedCreator ? " (Verified)" : ""
     const creatorType = a.creator.type === 1 ? "User" : "Group"
 
+    const thumbUrl = `https://www.roblox.com/asset-thumbnail/image?assetId=${a.asset.id}&width=420&height=420&format=png`
+
     const output = [
-      `Name: ${a.asset.name}`,
-      `Asset ID: ${a.asset.id}`,
-      `Type: ${getAssetTypeName(a.asset.typeId)}`,
-      `Category: ${a.asset.categoryPath || "N/A"}`,
-      `Thumbnail: https://www.roblox.com/asset-thumbnail/image?assetId=${a.asset.id}&width=420&height=420&format=png`,
+      `# ${a.asset.name}`,
       ``,
-      `Description:`,
+      `![${a.asset.name}](${thumbUrl})`,
+      ``,
+      `| Property | Value |`,
+      `|----------|-------|`,
+      `| Asset ID | ${a.asset.id} |`,
+      `| Type | ${getAssetTypeName(a.asset.typeId)} |`,
+      `| Category | ${a.asset.categoryPath || "N/A"} |`,
+      `| Price | ${a.fiatProduct.isFree ? "Free" : "Paid"} |`,
+      `| Purchasable | ${a.fiatProduct.purchasable ? "Yes" : "No"} |`,
+      `| Creator | ${a.creator.name}${verified} (${creatorType}) |`,
+      `| Votes | ${a.voting.upVotePercent}% liked (${a.voting.voteCount} total) |`,
+      `| Scripts | ${a.asset.hasScripts ? `Yes (${a.asset.scriptCount})` : "No"} |`,
+      `| Endorsed | ${a.asset.isEndorsed ? "Yes" : "No"} |`,
+      ``,
+      `## Description`,
+      ``,
       a.asset.description || "(No description)",
       ``,
-      `Creator: ${a.creator.name}${verified} (${creatorType})`,
+      `---`,
       ``,
-      `Price: ${a.fiatProduct.isFree ? "Free" : "Paid"}`,
-      `Purchasable: ${a.fiatProduct.purchasable ? "Yes" : "No"}`,
-      ``,
-      `Votes: ${a.voting.upVotePercent}% liked (${a.voting.voteCount} total)`,
-      `  Up: ${a.voting.upVotes}  Down: ${a.voting.downVotes}`,
-      ``,
-      `Scripts: ${a.asset.hasScripts ? `Yes (${a.asset.scriptCount} scripts)` : "No"}`,
-      `Endorsed: ${a.asset.isEndorsed ? "Yes" : "No"}`,
-      ``,
-      `Created: ${a.asset.createdUtc}`,
-      `Updated: ${a.asset.updatedUtc}`,
-      ``,
-      `To insert this asset, use the roblox_insert_asset tool with assetId=${a.asset.id}`,
+      `To insert this asset, use \`roblox_insert_asset\` with \`assetId=${a.asset.id}\``,
     ]
 
     return {

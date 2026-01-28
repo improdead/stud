@@ -809,3 +809,120 @@
     display: none;
   }
 }
+
+/* Roblox Toolbox Assets Grid */
+[data-component="toolbox-assets"] {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+  padding: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+
+  [data-slot="toolbox-asset"] {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0;
+    background-color: var(--surface-base);
+    border: 1px solid var(--border-weaker-base);
+    border-radius: 6px;
+    cursor: pointer;
+    text-align: left;
+    transition:
+      background-color 0.15s,
+      border-color 0.15s,
+      transform 0.1s;
+    overflow: hidden;
+    position: relative;
+
+    &:hover {
+      background-color: var(--surface-base-hover);
+      border-color: var(--border-default);
+      transform: translateY(-1px);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+
+    &[data-clicked="true"] {
+      border-color: var(--border-success-base);
+      background-color: var(--surface-success-weak);
+    }
+  }
+
+  [data-slot="toolbox-asset-thumbnail"] {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    background-color: var(--surface-inset-base);
+    border-bottom: 1px solid var(--border-weaker-base);
+  }
+
+  [data-slot="toolbox-asset-info"] {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px;
+    flex-grow: 1;
+  }
+
+  [data-slot="toolbox-asset-name"] {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-medium);
+    line-height: var(--line-height-normal);
+    color: var(--text-base);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  [data-slot="toolbox-asset-meta"] {
+    font-family: var(--font-family-sans);
+    font-size: 11px;
+    color: var(--text-weak);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  [data-slot="toolbox-asset-votes"] {
+    font-family: var(--font-family-sans);
+    font-size: 11px;
+    color: var(--text-weaker);
+  }
+
+  [data-slot="toolbox-asset-action"] {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--surface-raised-base);
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 0.15s;
+
+    [data-component="icon"] {
+      color: var(--icon-base);
+    }
+  }
+
+  [data-slot="toolbox-asset"]:hover [data-slot="toolbox-asset-action"] {
+    opacity: 1;
+  }
+
+  [data-slot="toolbox-asset"][data-clicked="true"] [data-slot="toolbox-asset-action"] {
+    opacity: 1;
+
+    [data-component="icon"] {
+      color: var(--icon-success-base);
+    }
+  }
+}

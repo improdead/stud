@@ -114,6 +114,23 @@ async function fetchWithTimeout<T>(url: string): Promise<{ success: boolean; dat
   }
 }
 
+export interface ToolboxAsset {
+  id: number
+  name: string
+  thumbnailUrl: string
+  type: string
+  typeId: number
+  creator: string
+  creatorId: number
+  verified: boolean
+  isFree: boolean
+  hasScripts: boolean
+  scriptCount: number
+  voteCount: number
+  votePercent: number
+  description: string
+}
+
 export const RobloxToolboxSearchTool = Tool.define<
   z.ZodObject<{
     keyword: z.ZodString
@@ -121,7 +138,7 @@ export const RobloxToolboxSearchTool = Tool.define<
     freeOnly: z.ZodOptional<z.ZodBoolean>
     limit: z.ZodOptional<z.ZodNumber>
   }>,
-  { keyword: string; category: string; resultCount: number }
+  { keyword: string; category: string; resultCount: number; assets: ToolboxAsset[] }
 >("roblox_toolbox_search", {
   description: `Search the Roblox toolbox for free assets.
 
@@ -164,7 +181,7 @@ Example: Search "car" in Models category to find free car models.`,
       return {
         title: `Search: ${params.keyword}`,
         output: `Error searching toolbox: ${searchResult.error}`,
-        metadata: { keyword: params.keyword, category, resultCount: 0 },
+        metadata: { keyword: params.keyword, category, resultCount: 0, assets: [] },
       }
     }
 
@@ -173,7 +190,7 @@ Example: Search "car" in Models category to find free car models.`,
       return {
         title: `Search: ${params.keyword}`,
         output: `No ${category.toLowerCase()} found for "${params.keyword}".`,
-        metadata: { keyword: params.keyword, category, resultCount: 0 },
+        metadata: { keyword: params.keyword, category, resultCount: 0, assets: [] },
       }
     }
 
@@ -187,7 +204,7 @@ Example: Search "car" in Models category to find free car models.`,
       return {
         title: `Search: ${params.keyword}`,
         output: `Found ${assetIds.length} result(s) for "${params.keyword}":\n\n${output}`,
-        metadata: { keyword: params.keyword, category, resultCount: assetIds.length },
+        metadata: { keyword: params.keyword, category, resultCount: assetIds.length, assets: [] },
       }
     }
 
@@ -208,9 +225,27 @@ Example: Search "car" in Models category to find free car models.`,
       return {
         title: `Search: ${params.keyword}`,
         output: `No usable free ${category.toLowerCase()} found for "${params.keyword}". Try setting freeOnly: false to see paid assets.`,
-        metadata: { keyword: params.keyword, category, resultCount: 0 },
+        metadata: { keyword: params.keyword, category, resultCount: 0, assets: [] },
       }
     }
+
+    // Build structured asset data for UI
+    const structuredAssets: ToolboxAsset[] = assets.map((a) => ({
+      id: a.asset.id,
+      name: a.asset.name,
+      thumbnailUrl: `https://www.roblox.com/asset-thumbnail/image?assetId=${a.asset.id}&width=150&height=150&format=png`,
+      type: getAssetTypeName(a.asset.typeId),
+      typeId: a.asset.typeId,
+      creator: a.creator.name,
+      creatorId: a.creator.id,
+      verified: a.creator.isVerifiedCreator,
+      isFree: a.fiatProduct.isFree,
+      hasScripts: a.asset.hasScripts,
+      scriptCount: a.asset.scriptCount,
+      voteCount: a.voting.voteCount,
+      votePercent: a.voting.upVotePercent,
+      description: a.asset.description,
+    }))
 
     const details = assets.map((a) => {
       const verified = a.creator.isVerifiedCreator ? " (Verified)" : ""
@@ -237,7 +272,7 @@ Example: Search "car" in Models category to find free car models.`,
     return {
       title: `${category}: ${params.keyword}`,
       output: output.join("\n"),
-      metadata: { keyword: params.keyword, category, resultCount: assets.length },
+      metadata: { keyword: params.keyword, category, resultCount: assets.length, assets: structuredAssets },
     }
   },
 })

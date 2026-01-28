@@ -61,6 +61,8 @@ This will:
 | `roblox_asset_details`  | Get details about an asset     |
 | `roblox_insert_asset`   | Insert toolbox asset into game |
 
+**Interactive Asset Selection**: When searching the toolbox, results are displayed as clickable thumbnail cards. Click any asset to automatically insert it into your game - no need to copy/paste asset IDs!
+
 ### Cloud API Tools (9 tools)
 
 | Tool                                 | Description                                  |

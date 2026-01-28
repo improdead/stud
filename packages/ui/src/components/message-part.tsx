@@ -1314,6 +1314,97 @@ ToolRegistry.register({
   },
 })
 
+// Roblox Toolbox Search - Interactive asset grid
+interface ToolboxAsset {
+  id: number
+  name: string
+  thumbnailUrl: string
+  type: string
+  creator: string
+  verified: boolean
+  hasScripts: boolean
+  scriptCount: number
+  voteCount: number
+  votePercent: number
+}
+
+ToolRegistry.register({
+  name: "roblox_toolbox_search",
+  render(props) {
+    const data = useData()
+    const assets = createMemo(() => (props.metadata?.assets ?? []) as ToolboxAsset[])
+    const keyword = () => props.input?.keyword ?? ""
+    const category = () => props.metadata?.category ?? "Models"
+    const resultCount = () => props.metadata?.resultCount ?? 0
+    const [clicked, setClicked] = createSignal<number | null>(null)
+
+    const insertAsset = (asset: ToolboxAsset) => {
+      const command = `Insert asset ${asset.id} (${asset.name}) into workspace`
+      setClicked(asset.id)
+
+      if (data.sendMessage) {
+        data.sendMessage(command)
+      } else {
+        // Fallback: copy to clipboard
+        navigator.clipboard.writeText(command)
+        setTimeout(() => setClicked(null), 2000)
+      }
+    }
+
+    return (
+      <BasicTool
+        {...props}
+        icon="mcp"
+        defaultOpen={true}
+        trigger={{
+          title: "Toolbox Search",
+          subtitle: `${keyword()} (${resultCount()} ${category().toLowerCase()})`,
+        }}
+      >
+        <Show when={assets().length > 0}>
+          <div data-component="toolbox-assets">
+            <For each={assets()}>
+              {(asset) => (
+                <button
+                  type="button"
+                  data-slot="toolbox-asset"
+                  data-clicked={clicked() === asset.id}
+                  onClick={() => insertAsset(asset)}
+                  title={`Click to insert ${asset.name}`}
+                >
+                  <img data-slot="toolbox-asset-thumbnail" src={asset.thumbnailUrl} alt={asset.name} loading="lazy" />
+                  <div data-slot="toolbox-asset-info">
+                    <span data-slot="toolbox-asset-name">{asset.name}</span>
+                    <span data-slot="toolbox-asset-meta">
+                      {asset.type} | {asset.creator}
+                      {asset.verified ? " ✓" : ""}
+                    </span>
+                    <Show when={asset.voteCount > 0}>
+                      <span data-slot="toolbox-asset-votes">{asset.votePercent}% liked</span>
+                    </Show>
+                  </div>
+                  <div data-slot="toolbox-asset-action">
+                    <Show when={clicked() === asset.id} fallback={<Icon name="plus" size="small" />}>
+                      <Icon name="check" size="small" />
+                    </Show>
+                  </div>
+                </button>
+              )}
+            </For>
+          </div>
+        </Show>
+        <Show when={assets().length === 0 && props.output}>
+          {(output) => (
+            <div data-component="tool-output" data-scrollable>
+              <Markdown text={output()} />
+            </div>
+          )}
+        </Show>
+      </BasicTool>
+    )
+  },
+})
+
 function QuestionPrompt(props: { request: QuestionRequest }) {
   const data = useData()
   const i18n = useI18n()

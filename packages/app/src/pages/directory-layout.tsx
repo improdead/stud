@@ -10,6 +10,7 @@ import type { QuestionAnswer } from "@stud/sdk/v2"
 import { decode64 } from "@/utils/base64"
 import { showToast } from "@stud/ui/toast"
 import { useLanguage } from "@/context/language"
+import { emitSendMessage } from "@/utils/events"
 
 export default function Layout(props: ParentProps) {
   const params = useParams()
@@ -51,6 +52,10 @@ export default function Layout(props: ParentProps) {
               navigate(`/${params.dir}/session/${sessionID}`)
             }
 
+            const sendMessage = (text: string) => {
+              emitSendMessage(text)
+            }
+
             return (
               <DataProvider
                 data={sync.data}
@@ -59,6 +64,7 @@ export default function Layout(props: ParentProps) {
                 onQuestionReply={replyToQuestion}
                 onQuestionReject={rejectQuestion}
                 onNavigateToSession={navigateToSession}
+                onSendMessage={sendMessage}
               >
                 <LocalProvider>{props.children}</LocalProvider>
               </DataProvider>

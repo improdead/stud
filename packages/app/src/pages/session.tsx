@@ -61,6 +61,7 @@ import { ConstrainDragYAxis, getDraggableId } from "@/utils/solid-dnd"
 import { usePermission } from "@/context/permission"
 import { decode64 } from "@/utils/base64"
 import { showToast } from "@stud/ui/toast"
+import { onSendMessage } from "@/utils/events"
 import {
   SessionHeader,
   SessionContextTab,
@@ -323,6 +324,14 @@ export default function Page() {
   }
 
   const isDesktop = createMediaQuery("(min-width: 768px)")
+
+  // Listen for sendMessage events from UI components (e.g., toolbox asset clicks)
+  onCleanup(
+    onSendMessage((text) => {
+      // Set the prompt text
+      prompt.set([{ type: "text", content: text, start: 0, end: text.length }])
+    }),
+  )
 
   function normalizeTab(tab: string) {
     if (!tab.startsWith("file://")) return tab

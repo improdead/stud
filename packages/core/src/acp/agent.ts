@@ -445,7 +445,7 @@ export namespace ACP {
         },
         authMethods: [authMethod],
         agentInfo: {
-          name: "OpenCode",
+          name: "Stud",
           version: Installation.VERSION,
         },
       }

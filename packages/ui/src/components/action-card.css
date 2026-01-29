@@ -388,6 +388,10 @@
   border-radius: 8px;
   color: var(--icon-weak);
   background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
   transition:
     background-color 0.15s ease,
     color 0.15s ease,

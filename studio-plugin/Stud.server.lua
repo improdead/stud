@@ -17,15 +17,21 @@ local HttpService = game:GetService("HttpService")
 local Selection = game:GetService("Selection")
 local ScriptEditorService = game:GetService("ScriptEditorService")
 local ChangeHistoryService = game:GetService("ChangeHistoryService")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 
 local PLUGIN_NAME = "Stud"
 local POLL_URL = "http://localhost:3001/stud/poll"
 local RESPOND_URL = "http://localhost:3001/stud/respond"
+local MAX_ACTIVITY_LOG = 10
 
 -- State
 local isConnected = false
 local isConnecting = false
 local pollingEnabled = false
+local isProcessing = false
+local projectInfo = nil
+local activityLog = {}
 
 -- UI Elements
 local toolbar = plugin:CreateToolbar(PLUGIN_NAME)
@@ -35,14 +41,21 @@ local toggleButton = toolbar:CreateButton(
 	"rbxassetid://4458901886"
 )
 
--- Colors
+-- Colors (modern dark theme)
 local Colors = {
-	bg = Color3.fromRGB(25, 25, 28),
-	disconnected = Color3.fromRGB(255, 85, 85),
-	connecting = Color3.fromRGB(255, 170, 50),
-	connected = Color3.fromRGB(85, 255, 127),
-	text = Color3.fromRGB(220, 220, 220),
-	textDim = Color3.fromRGB(140, 140, 140),
+	bg = Color3.fromRGB(18, 18, 22),
+	bgSecondary = Color3.fromRGB(28, 28, 34),
+	bgTertiary = Color3.fromRGB(38, 38, 46),
+	accent = Color3.fromRGB(99, 102, 241), -- Indigo
+	accentHover = Color3.fromRGB(129, 132, 255),
+	success = Color3.fromRGB(34, 197, 94),
+	warning = Color3.fromRGB(250, 204, 21),
+	error = Color3.fromRGB(239, 68, 68),
+	text = Color3.fromRGB(250, 250, 250),
+	textSecondary = Color3.fromRGB(161, 161, 170),
+	textMuted = Color3.fromRGB(113, 113, 122),
+	border = Color3.fromRGB(63, 63, 70),
+	processing = Color3.fromRGB(59, 130, 246),
 }
 
 -- Widget UI
@@ -50,16 +63,171 @@ local widget
 local statusDot
 local statusText
 local subText
+local connectButton
+local activityContainer
+local activityList
+local processingIndicator
+local projectLabel
+
+-- Utility: Create rounded frame
+local function createFrame(props)
+	local frame = Instance.new("Frame")
+	frame.BackgroundColor3 = props.bg or Colors.bg
+	frame.BorderSizePixel = 0
+	frame.Size = props.size or UDim2.new(1, 0, 0, 40)
+	frame.Position = props.position or UDim2.new(0, 0, 0, 0)
+	frame.BackgroundTransparency = props.transparency or 0
+	
+	if props.corner then
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, props.corner)
+		corner.Parent = frame
+	end
+	
+	if props.parent then
+		frame.Parent = props.parent
+	end
+	
+	return frame
+end
+
+-- Utility: Create text label
+local function createLabel(props)
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = props.size or UDim2.new(1, 0, 0, 20)
+	label.Position = props.position or UDim2.new(0, 0, 0, 0)
+	label.TextColor3 = props.color or Colors.text
+	label.Text = props.text or ""
+	label.TextSize = props.textSize or 14
+	label.Font = props.font or Enum.Font.GothamMedium
+	label.TextXAlignment = props.align or Enum.TextXAlignment.Left
+	label.TextTruncate = Enum.TextTruncate.AtEnd
+	
+	if props.parent then
+		label.Parent = props.parent
+	end
+	
+	return label
+end
+
+-- Utility: Create button
+local function createButton(props)
+	local button = Instance.new("TextButton")
+	button.BackgroundColor3 = props.bg or Colors.accent
+	button.BorderSizePixel = 0
+	button.Size = props.size or UDim2.new(1, 0, 0, 36)
+	button.Position = props.position or UDim2.new(0, 0, 0, 0)
+	button.TextColor3 = props.textColor or Colors.text
+	button.Text = props.text or "Button"
+	button.TextSize = props.textSize or 14
+	button.Font = props.font or Enum.Font.GothamBold
+	button.AutoButtonColor = false
+	
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, props.corner or 8)
+	corner.Parent = button
+	
+	-- Hover effect
+	button.MouseEnter:Connect(function()
+		TweenService:Create(button, TweenInfo.new(0.15), {
+			BackgroundColor3 = props.bgHover or Colors.accentHover
+		}):Play()
+	end)
+	
+	button.MouseLeave:Connect(function()
+		TweenService:Create(button, TweenInfo.new(0.15), {
+			BackgroundColor3 = props.bg or Colors.accent
+		}):Play()
+	end)
+	
+	if props.parent then
+		button.Parent = props.parent
+	end
+	
+	return button
+end
+
+-- Add activity to log
+local function addActivity(action, status, details)
+	local entry = {
+		time = os.date("%H:%M:%S"),
+		action = action,
+		status = status,
+		details = details or ""
+	}
+	
+	table.insert(activityLog, 1, entry)
+	
+	-- Keep log trimmed
+	while #activityLog > MAX_ACTIVITY_LOG do
+		table.remove(activityLog)
+	end
+	
+	-- Update UI
+	if activityList then
+		-- Clear existing
+		for _, child in ipairs(activityList:GetChildren()) do
+			if child:IsA("Frame") then
+				child:Destroy()
+			end
+		end
+		
+		-- Add entries
+		for i, entry in ipairs(activityLog) do
+			local row = createFrame({
+				bg = i % 2 == 0 and Colors.bgSecondary or Colors.bg,
+				size = UDim2.new(1, 0, 0, 28),
+				parent = activityList
+			})
+			
+			-- Time
+			createLabel({
+				text = entry.time,
+				color = Colors.textMuted,
+				textSize = 11,
+				font = Enum.Font.RobotoMono,
+				size = UDim2.new(0, 55, 1, 0),
+				position = UDim2.new(0, 8, 0, 0),
+				parent = row
+			})
+			
+			-- Status dot
+			local dot = Instance.new("Frame")
+			dot.Size = UDim2.new(0, 6, 0, 6)
+			dot.Position = UDim2.new(0, 68, 0.5, -3)
+			dot.BorderSizePixel = 0
+			dot.BackgroundColor3 = entry.status == "success" and Colors.success or 
+				entry.status == "error" and Colors.error or Colors.processing
+			dot.Parent = row
+			
+			local dotCorner = Instance.new("UICorner")
+			dotCorner.CornerRadius = UDim.new(1, 0)
+			dotCorner.Parent = dot
+			
+			-- Action
+			createLabel({
+				text = entry.action,
+				color = Colors.textSecondary,
+				textSize = 11,
+				font = Enum.Font.Gotham,
+				size = UDim2.new(1, -90, 1, 0),
+				position = UDim2.new(0, 82, 0, 0),
+				parent = row
+			})
+		end
+	end
+end
 
 local function createWidget()
 	local info = DockWidgetPluginGuiInfo.new(
 		Enum.InitialDockState.Float,
 		true,  -- Initially enabled
 		false, -- Override previous state
-		240,   -- Width
-		80,    -- Height
-		200,   -- Min width
-		70     -- Min height
+		280,   -- Width
+		320,   -- Height
+		260,   -- Min width
+		280    -- Min height
 	)
 	
 	widget = plugin:CreateDockWidgetPluginGui("StudConnection", info)
@@ -67,88 +235,256 @@ local function createWidget()
 	widget.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	
 	-- Main container
-	local container = Instance.new("Frame")
+	local container = createFrame({
+		bg = Colors.bg,
+		size = UDim2.new(1, 0, 1, 0),
+	})
 	container.Name = "Container"
-	container.Size = UDim2.new(1, 0, 1, 0)
-	container.BackgroundColor3 = Colors.bg
-	container.BorderSizePixel = 0
 	container.Parent = widget
 	
 	-- Padding
 	local padding = Instance.new("UIPadding")
-	padding.PaddingTop = UDim.new(0, 12)
-	padding.PaddingBottom = UDim.new(0, 12)
+	padding.PaddingTop = UDim.new(0, 16)
+	padding.PaddingBottom = UDim.new(0, 16)
 	padding.PaddingLeft = UDim.new(0, 16)
 	padding.PaddingRight = UDim.new(0, 16)
 	padding.Parent = container
 	
-	-- Status row
-	local statusRow = Instance.new("Frame")
-	statusRow.Name = "StatusRow"
-	statusRow.Size = UDim2.new(1, 0, 0, 24)
-	statusRow.BackgroundTransparency = 1
-	statusRow.Parent = container
+	-- Layout
+	local layout = Instance.new("UIListLayout")
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Padding = UDim.new(0, 12)
+	layout.Parent = container
 	
-	-- Status dot (indicator)
+	-- ========== Status Card ==========
+	local statusCard = createFrame({
+		bg = Colors.bgSecondary,
+		size = UDim2.new(1, 0, 0, 80),
+		corner = 12,
+		parent = container
+	})
+	statusCard.LayoutOrder = 1
+	
+	local statusPadding = Instance.new("UIPadding")
+	statusPadding.PaddingTop = UDim.new(0, 14)
+	statusPadding.PaddingBottom = UDim.new(0, 14)
+	statusPadding.PaddingLeft = UDim.new(0, 14)
+	statusPadding.PaddingRight = UDim.new(0, 14)
+	statusPadding.Parent = statusCard
+	
+	-- Status header row
+	local statusHeader = Instance.new("Frame")
+	statusHeader.Size = UDim2.new(1, 0, 0, 24)
+	statusHeader.BackgroundTransparency = 1
+	statusHeader.Parent = statusCard
+	
+	-- Status dot (animated)
 	statusDot = Instance.new("Frame")
 	statusDot.Name = "Dot"
-	statusDot.Size = UDim2.new(0, 12, 0, 12)
-	statusDot.Position = UDim2.new(0, 0, 0.5, -6)
-	statusDot.BackgroundColor3 = Colors.disconnected
+	statusDot.Size = UDim2.new(0, 10, 0, 10)
+	statusDot.Position = UDim2.new(0, 0, 0.5, -5)
+	statusDot.BackgroundColor3 = Colors.error
 	statusDot.BorderSizePixel = 0
-	statusDot.Parent = statusRow
+	statusDot.Parent = statusHeader
 	
 	local dotCorner = Instance.new("UICorner")
 	dotCorner.CornerRadius = UDim.new(1, 0)
 	dotCorner.Parent = statusDot
 	
-	-- Status text
-	statusText = Instance.new("TextLabel")
-	statusText.Name = "Status"
-	statusText.Size = UDim2.new(1, -20, 1, 0)
-	statusText.Position = UDim2.new(0, 20, 0, 0)
-	statusText.BackgroundTransparency = 1
-	statusText.TextColor3 = Colors.text
-	statusText.Text = "Disconnected"
-	statusText.TextSize = 16
-	statusText.Font = Enum.Font.GothamBold
-	statusText.TextXAlignment = Enum.TextXAlignment.Left
-	statusText.Parent = statusRow
+	-- Glow effect for dot
+	local dotGlow = Instance.new("UIStroke")
+	dotGlow.Color = Colors.error
+	dotGlow.Thickness = 2
+	dotGlow.Transparency = 0.7
+	dotGlow.Parent = statusDot
 	
-	-- Sub text (instructions)
-	subText = Instance.new("TextLabel")
-	subText.Name = "SubText"
-	subText.Size = UDim2.new(1, 0, 0, 20)
-	subText.Position = UDim2.new(0, 0, 0, 32)
-	subText.BackgroundTransparency = 1
-	subText.TextColor3 = Colors.textDim
-	subText.Text = "Click toolbar button to connect"
-	subText.TextSize = 12
-	subText.Font = Enum.Font.Gotham
-	subText.TextXAlignment = Enum.TextXAlignment.Left
-	subText.TextWrapped = true
-	subText.Parent = container
+	-- Status text
+	statusText = createLabel({
+		text = "Disconnected",
+		color = Colors.text,
+		textSize = 16,
+		font = Enum.Font.GothamBold,
+		size = UDim2.new(1, -20, 1, 0),
+		position = UDim2.new(0, 18, 0, 0),
+		parent = statusHeader
+	})
+	
+	-- Processing indicator (animated spinner text)
+	processingIndicator = createLabel({
+		text = "",
+		color = Colors.processing,
+		textSize = 12,
+		font = Enum.Font.GothamMedium,
+		size = UDim2.new(1, 0, 0, 16),
+		position = UDim2.new(0, 0, 0, 28),
+		parent = statusCard
+	})
+	
+	-- Sub text / Project info
+	subText = createLabel({
+		text = "Click Connect to start",
+		color = Colors.textSecondary,
+		textSize = 12,
+		font = Enum.Font.Gotham,
+		size = UDim2.new(1, 0, 0, 16),
+		position = UDim2.new(0, 0, 1, -16),
+		parent = statusCard
+	})
+	
+	-- ========== Connect Button ==========
+	connectButton = createButton({
+		text = "Connect",
+		size = UDim2.new(1, 0, 0, 40),
+		corner = 10,
+		parent = container
+	})
+	connectButton.LayoutOrder = 2
+	
+	connectButton.MouseButton1Click:Connect(function()
+		toggleConnection()
+	end)
+	
+	-- ========== Activity Log ==========
+	local activityHeader = createLabel({
+		text = "Recent Activity",
+		color = Colors.textMuted,
+		textSize = 11,
+		font = Enum.Font.GothamBold,
+		size = UDim2.new(1, 0, 0, 16),
+		parent = container
+	})
+	activityHeader.LayoutOrder = 3
+	
+	activityContainer = createFrame({
+		bg = Colors.bgSecondary,
+		size = UDim2.new(1, 0, 1, -180),
+		corner = 10,
+		parent = container
+	})
+	activityContainer.LayoutOrder = 4
+	activityContainer.ClipsDescendants = true
+	
+	-- Scrolling frame for activity
+	local scrollFrame = Instance.new("ScrollingFrame")
+	scrollFrame.Size = UDim2.new(1, 0, 1, 0)
+	scrollFrame.BackgroundTransparency = 1
+	scrollFrame.BorderSizePixel = 0
+	scrollFrame.ScrollBarThickness = 4
+	scrollFrame.ScrollBarImageColor3 = Colors.border
+	scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+	scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	scrollFrame.Parent = activityContainer
+	
+	activityList = Instance.new("Frame")
+	activityList.Size = UDim2.new(1, 0, 0, 0)
+	activityList.BackgroundTransparency = 1
+	activityList.AutomaticSize = Enum.AutomaticSize.Y
+	activityList.Parent = scrollFrame
+	
+	local activityLayout = Instance.new("UIListLayout")
+	activityLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	activityLayout.Parent = activityList
+	
+	-- Empty state
+	local emptyLabel = createLabel({
+		text = "No activity yet",
+		color = Colors.textMuted,
+		textSize = 12,
+		font = Enum.Font.Gotham,
+		size = UDim2.new(1, 0, 0, 40),
+		align = Enum.TextXAlignment.Center,
+		parent = activityList
+	})
+	emptyLabel.Name = "EmptyState"
+	emptyLabel.TextYAlignment = Enum.TextYAlignment.Center
 	
 	return widget
 end
 
+-- Animate processing indicator
+local processingDots = 0
+local function updateProcessingAnimation()
+	if isProcessing and processingIndicator then
+		processingDots = (processingDots % 3) + 1
+		processingIndicator.Text = "Processing" .. string.rep(".", processingDots)
+	elseif processingIndicator then
+		processingIndicator.Text = ""
+	end
+end
+
+-- Start processing animation loop
+task.spawn(function()
+	while true do
+		updateProcessingAnimation()
+		task.wait(0.4)
+	end
+end)
+
+-- Animate status dot glow
+local function animateDotGlow()
+	if not statusDot then return end
+	
+	local glow = statusDot:FindFirstChildOfClass("UIStroke")
+	if not glow then return end
+	
+	-- Pulse animation
+	while true do
+		if isConnected or isConnecting then
+			TweenService:Create(glow, TweenInfo.new(1, Enum.EasingStyle.Sine), {
+				Transparency = 0.3
+			}):Play()
+			task.wait(1)
+			TweenService:Create(glow, TweenInfo.new(1, Enum.EasingStyle.Sine), {
+				Transparency = 0.8
+			}):Play()
+			task.wait(1)
+		else
+			glow.Transparency = 0.7
+			task.wait(0.5)
+		end
+	end
+end
+
+task.spawn(animateDotGlow)
+
 local function updateUI()
-	if isConnecting then
-		statusDot.BackgroundColor3 = Colors.connecting
+	if not statusDot or not statusText or not subText or not connectButton then
+		return
+	end
+	
+	local glow = statusDot:FindFirstChildOfClass("UIStroke")
+	
+	if isProcessing then
+		statusDot.BackgroundColor3 = Colors.processing
+		if glow then glow.Color = Colors.processing end
+		statusText.Text = "Processing..."
+		subText.Text = "Executing AI command"
+		connectButton.Text = "Disconnect"
+		connectButton.BackgroundColor3 = Colors.error
+	elseif isConnecting then
+		statusDot.BackgroundColor3 = Colors.warning
+		if glow then glow.Color = Colors.warning end
 		statusText.Text = "Connecting..."
 		subText.Text = "Looking for Stud Desktop"
-		toggleButton:SetActive(true)
+		connectButton.Text = "Cancel"
+		connectButton.BackgroundColor3 = Colors.textMuted
 	elseif isConnected then
-		statusDot.BackgroundColor3 = Colors.connected
+		statusDot.BackgroundColor3 = Colors.success
+		if glow then glow.Color = Colors.success end
 		statusText.Text = "Connected"
-		subText.Text = "Ready for AI commands"
-		toggleButton:SetActive(true)
+		subText.Text = projectInfo and ("Project: " .. projectInfo) or "Ready for AI commands"
+		connectButton.Text = "Disconnect"
+		connectButton.BackgroundColor3 = Colors.error
 	else
-		statusDot.BackgroundColor3 = Colors.disconnected
+		statusDot.BackgroundColor3 = Colors.error
+		if glow then glow.Color = Colors.error end
 		statusText.Text = "Disconnected"
-		subText.Text = "Click toolbar button to connect"
-		toggleButton:SetActive(false)
+		subText.Text = "Click Connect to start"
+		connectButton.Text = "Connect"
+		connectButton.BackgroundColor3 = Colors.accent
 	end
+	
+	toggleButton:SetActive(isConnected or isConnecting)
 end
 
 -- Utility functions
@@ -631,6 +967,27 @@ local modifyingPaths = {
 	["/code/run"] = true,
 }
 
+-- Friendly names for activity log
+local actionNames = {
+	["/ping"] = "Ping",
+	["/script/get"] = "Read Script",
+	["/script/set"] = "Write Script",
+	["/script/edit"] = "Edit Script",
+	["/instance/children"] = "List Children",
+	["/instance/properties"] = "Get Properties",
+	["/instance/set"] = "Set Property",
+	["/instance/create"] = "Create Instance",
+	["/instance/delete"] = "Delete Instance",
+	["/instance/clone"] = "Clone Instance",
+	["/instance/move"] = "Move Instance",
+	["/instance/bulk-create"] = "Bulk Create",
+	["/instance/bulk-delete"] = "Bulk Delete",
+	["/instance/bulk-set"] = "Bulk Update",
+	["/instance/search"] = "Search",
+	["/selection/get"] = "Get Selection",
+	["/code/run"] = "Run Code",
+}
+
 -- HTTP request handler
 local function handleRequest(request)
 	local path = request.path or request.Path
@@ -658,7 +1015,23 @@ local function handleRequest(request)
 		ChangeHistoryService:SetWaypoint("Stud: " .. path)
 	end
 	
+	-- Set processing state
+	isProcessing = true
+	updateUI()
+	
 	local success, result = pcall(handler, data)
+	
+	-- Update activity log
+	local actionName = actionNames[path] or path
+	if success then
+		addActivity(actionName, "success")
+	else
+		addActivity(actionName, "error", tostring(result))
+	end
+	
+	isProcessing = false
+	updateUI()
+	
 	if not success then
 		return {
 			status = 500,
@@ -697,10 +1070,18 @@ local function pollServer()
 				isConnecting = false
 				failCount = 0
 				updateUI()
+				addActivity("Connected", "success")
 				print("[Stud] Connected to Stud Desktop")
 			end
 			
 			local data = jsonDecode(response.Body)
+			
+			-- Extract project info if available
+			if data and data.project then
+				projectInfo = data.project
+				updateUI()
+			end
+			
 			if data and data.request then
 				local result = handleRequest(data.request)
 				pcall(function()
@@ -721,7 +1102,9 @@ local function pollServer()
 			if isConnected and failCount >= maxFails then
 				isConnected = false
 				isConnecting = true
+				projectInfo = nil
 				updateUI()
+				addActivity("Connection lost", "error")
 				print("[Stud] Connection lost, retrying...")
 			end
 		end
@@ -732,22 +1115,26 @@ local function pollServer()
 	-- Stopped polling
 	isConnected = false
 	isConnecting = false
+	projectInfo = nil
 	updateUI()
 end
 
 -- Toggle connection
-local function toggleConnection()
+function toggleConnection()
 	pollingEnabled = not pollingEnabled
 	
 	if pollingEnabled then
 		isConnecting = true
 		updateUI()
+		addActivity("Connecting", "pending")
 		print("[Stud] Connecting...")
 		task.spawn(pollServer)
 	else
 		isConnected = false
 		isConnecting = false
+		projectInfo = nil
 		updateUI()
+		addActivity("Disconnected", "success")
 		print("[Stud] Disconnected")
 	end
 end
@@ -763,4 +1150,4 @@ toggleButton.Click:Connect(function()
 	widget.Enabled = true
 end)
 
-print("[Stud] Plugin loaded - Click the Stud button to connect")
+print("[Stud] Plugin loaded - Click Connect to start")

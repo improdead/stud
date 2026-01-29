@@ -277,13 +277,12 @@ Example: Search "car" in Models category to find free car models.`,
 
     // Step 4: Fetch real thumbnail URLs from Roblox API
     const thumbnails = await fetchThumbnails(assets.map((a) => a.asset.id))
-    const fallbackThumb = "https://tr.rbxcdn.com/180DAY-e9bb38d37c89e5c8c8d102d2b6e23b8d/150/150/Image/Webp/noFilter"
 
     // Build structured asset data for UI
     const structuredAssets: ToolboxAsset[] = assets.map((a) => ({
       id: a.asset.id,
       name: a.asset.name,
-      thumbnailUrl: thumbnails.get(a.asset.id) || fallbackThumb,
+      thumbnailUrl: thumbnails.get(a.asset.id) || getPlaceholderThumbnail(a.asset.id),
       type: getAssetTypeName(a.asset.typeId),
       typeId: a.asset.typeId,
       creator: a.creator.name,
@@ -297,11 +296,11 @@ Example: Search "car" in Models category to find free car models.`,
       description: a.asset.description,
     }))
 
-    const details = assets.map((a) => {
+    const details = assets.map((a, index) => {
       const verified = a.creator.isVerifiedCreator ? " (Verified)" : ""
       const scripts = a.asset.hasScripts ? ` | ${a.asset.scriptCount} scripts` : ""
       const votes = a.voting.voteCount > 0 ? ` | ${a.voting.upVotePercent}% liked (${a.voting.voteCount} votes)` : ""
-      const thumb = thumbnails.get(a.asset.id) || fallbackThumb
+      const thumb = structuredAssets[index]?.thumbnailUrl || getPlaceholderThumbnail(a.asset.id)
 
       return (
         `### [${a.asset.id}] ${a.asset.name}\n\n` +
@@ -326,6 +325,10 @@ Example: Search "car" in Models category to find free car models.`,
     }
   },
 })
+
+function getPlaceholderThumbnail(assetId: number): string {
+  return `https://tr.rbxcdn.com/asset-thumbnail/image?assetId=${assetId}&width=150&height=150&format=Png`
+}
 
 export const RobloxInsertAssetTool = Tool.define<
   z.ZodObject<{

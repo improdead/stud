@@ -5,15 +5,17 @@ import { lazy } from "../../util/lazy"
 import { RojoParser } from "../../roblox/project-parser"
 import { Instance } from "../../project/instance"
 
-const InstanceNodeSchema: z.ZodType<RojoParser.InstanceNode> = z.lazy(() =>
-  z.object({
+// Note: Using z.any() for the response schema because z.lazy() recursive schemas
+// don't serialize properly to OpenAPI. The actual TypeScript types are correct.
+const InstanceNodeSchema = z
+  .object({
     name: z.string(),
     className: z.string(),
     path: z.string(),
     filePath: z.string().optional(),
-    children: z.array(InstanceNodeSchema).optional(),
-  }),
-)
+    children: z.array(z.any()).optional().describe("Child instance nodes"),
+  })
+  .meta({ ref: "InstanceNode" })
 
 export const InstanceTreeRoutes = lazy(() =>
   new Hono()

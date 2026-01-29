@@ -662,6 +662,80 @@ export type EventTodoUpdated = {
   }
 }
 
+export type PickerItem = {
+  /**
+   * Unique identifier for the item
+   */
+  id: string | number
+  /**
+   * Display name
+   */
+  name: string
+  /**
+   * Thumbnail image URL
+   */
+  thumbnailUrl?: string
+  /**
+   * Item description
+   */
+  description?: string
+  /**
+   * Additional metadata
+   */
+  metadata?: {
+    [key: string]: unknown
+  }
+}
+
+export type PickerRequest = {
+  id: string
+  sessionID: string
+  /**
+   * Title for the picker prompt
+   */
+  title: string
+  /**
+   * Items available for selection
+   */
+  items: Array<PickerItem>
+  /**
+   * AI-recommended item IDs
+   */
+  recommended?: Array<string | number>
+  /**
+   * Allow selecting multiple items (default: true)
+   */
+  multiple?: boolean
+  tool?: {
+    messageID: string
+    callID: string
+  }
+}
+
+export type EventPickerAsked = {
+  type: "picker.asked"
+  properties: PickerRequest
+}
+
+export type PickerSelection = Array<string | number>
+
+export type EventPickerReplied = {
+  type: "picker.replied"
+  properties: {
+    sessionID: string
+    requestID: string
+    selections: PickerSelection
+  }
+}
+
+export type EventPickerRejected = {
+  type: "picker.rejected"
+  properties: {
+    sessionID: string
+    requestID: string
+  }
+}
+
 export type EventTuiPromptAppend = {
   type: "tui.prompt.append"
   properties: {
@@ -905,6 +979,9 @@ export type Event =
   | EventSessionCompacted
   | EventFileWatcherUpdated
   | EventTodoUpdated
+  | EventPickerAsked
+  | EventPickerReplied
+  | EventPickerRejected
   | EventTuiPromptAppend
   | EventTuiCommandExecute
   | EventTuiToastShow
@@ -2085,6 +2162,17 @@ export type McpStatus =
   | McpStatusNeedsAuth
   | McpStatusNeedsClientRegistration
 
+export type InstanceNode = {
+  name: string
+  className: string
+  path: string
+  filePath?: string
+  /**
+   * Child instance nodes
+   */
+  children?: Array<unknown>
+}
+
 export type Path = {
   home: string
   state: string
@@ -2214,6 +2302,50 @@ export type GlobalDisposeResponses = {
 }
 
 export type GlobalDisposeResponse = GlobalDisposeResponses[keyof GlobalDisposeResponses]
+
+export type GlobalDiscoverData = {
+  body?: never
+  path?: never
+  query?: never
+  url: "/global/discover"
+}
+
+export type GlobalDiscoverResponses = {
+  /**
+   * Discovered projects
+   */
+  200: Array<{
+    path: string
+    name: string
+    type: "rojo" | "wally" | "rbxl" | "rbxlx" | "rbxm" | "unknown"
+    lastModified: number
+    indicators: Array<string>
+  }>
+}
+
+export type GlobalDiscoverResponse = GlobalDiscoverResponses[keyof GlobalDiscoverResponses]
+
+export type GlobalDiscoverInData = {
+  body?: unknown
+  path?: never
+  query?: never
+  url: "/global/discover"
+}
+
+export type GlobalDiscoverInResponses = {
+  /**
+   * Discovered projects
+   */
+  200: Array<{
+    path: string
+    name: string
+    type: "rojo" | "wally" | "rbxl" | "rbxlx" | "rbxm" | "unknown"
+    lastModified: number
+    indicators: Array<string>
+  }>
+}
+
+export type GlobalDiscoverInResponse = GlobalDiscoverInResponses[keyof GlobalDiscoverInResponses]
 
 export type ProjectListData = {
   body?: never
@@ -3833,6 +3965,92 @@ export type QuestionRejectResponses = {
 
 export type QuestionRejectResponse = QuestionRejectResponses[keyof QuestionRejectResponses]
 
+export type PickerListData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+  }
+  url: "/picker"
+}
+
+export type PickerListResponses = {
+  /**
+   * List of pending pickers
+   */
+  200: Array<PickerRequest>
+}
+
+export type PickerListResponse = PickerListResponses[keyof PickerListResponses]
+
+export type PickerReplyData = {
+  body?: {
+    selections: PickerSelection
+  }
+  path: {
+    requestID: string
+  }
+  query?: {
+    directory?: string
+  }
+  url: "/picker/{requestID}/reply"
+}
+
+export type PickerReplyErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type PickerReplyError = PickerReplyErrors[keyof PickerReplyErrors]
+
+export type PickerReplyResponses = {
+  /**
+   * Picker answered successfully
+   */
+  200: boolean
+}
+
+export type PickerReplyResponse = PickerReplyResponses[keyof PickerReplyResponses]
+
+export type PickerRejectData = {
+  body?: never
+  path: {
+    requestID: string
+  }
+  query?: {
+    directory?: string
+  }
+  url: "/picker/{requestID}/reject"
+}
+
+export type PickerRejectErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type PickerRejectError = PickerRejectErrors[keyof PickerRejectErrors]
+
+export type PickerRejectResponses = {
+  /**
+   * Picker rejected successfully
+   */
+  200: boolean
+}
+
+export type PickerRejectResponse = PickerRejectResponses[keyof PickerRejectResponses]
+
 export type ProviderListData = {
   body?: never
   path?: never
@@ -4378,6 +4596,132 @@ export type McpDisconnectResponses = {
 }
 
 export type McpDisconnectResponse = McpDisconnectResponses[keyof McpDisconnectResponses]
+
+export type RobloxAuthStatusData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+  }
+  url: "/roblox/status"
+}
+
+export type RobloxAuthStatusResponses = {
+  /**
+   * Authentication status
+   */
+  200: {
+    authenticated: boolean
+    username?: string
+    displayName?: string
+    userId?: number
+  }
+}
+
+export type RobloxAuthStatusResponse = RobloxAuthStatusResponses[keyof RobloxAuthStatusResponses]
+
+export type RobloxAuthLoginData = {
+  body?: {
+    /**
+     * The .ROBLOSECURITY cookie value
+     */
+    cookie: string
+  }
+  path?: never
+  query?: {
+    directory?: string
+  }
+  url: "/roblox/login"
+}
+
+export type RobloxAuthLoginErrors = {
+  /**
+   * Login failed
+   */
+  400: {
+    success: false
+    error: string
+  }
+}
+
+export type RobloxAuthLoginError = RobloxAuthLoginErrors[keyof RobloxAuthLoginErrors]
+
+export type RobloxAuthLoginResponses = {
+  /**
+   * Login successful
+   */
+  200: {
+    success: true
+    username: string
+    displayName: string
+  }
+}
+
+export type RobloxAuthLoginResponse = RobloxAuthLoginResponses[keyof RobloxAuthLoginResponses]
+
+export type RobloxAuthLogoutData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+  }
+  url: "/roblox/logout"
+}
+
+export type RobloxAuthLogoutResponses = {
+  /**
+   * Logout successful
+   */
+  200: {
+    success: boolean
+  }
+}
+
+export type RobloxAuthLogoutResponse = RobloxAuthLogoutResponses[keyof RobloxAuthLogoutResponses]
+
+export type InstanceTreeData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+  }
+  url: "/instance-tree/tree"
+}
+
+export type InstanceTreeResponses = {
+  /**
+   * Instance tree
+   */
+  200: {
+    tree: InstanceNode | null
+    projectFile: string | null
+  }
+}
+
+export type InstanceTreeResponse = InstanceTreeResponses[keyof InstanceTreeResponses]
+
+export type InstanceTreeDirectoryData = {
+  body?: never
+  path: {
+    directory: string
+  }
+  query?: {
+    directory?: string
+  }
+  url: "/instance-tree/tree/{directory}"
+}
+
+export type InstanceTreeDirectoryResponses = {
+  /**
+   * Instance tree
+   */
+  200: {
+    tree: InstanceNode | null
+    projectFile: string | null
+  }
+}
+
+export type InstanceTreeDirectoryResponse = InstanceTreeDirectoryResponses[keyof InstanceTreeDirectoryResponses]
 
 export type TuiAppendPromptData = {
   body?: {

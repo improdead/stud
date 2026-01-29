@@ -8,7 +8,7 @@ import type {
   AppLogErrors,
   AppLogResponses,
   AppSkillsResponses,
-  Auth as Auth3,
+  Auth as Auth4,
   AuthRemoveErrors,
   AuthRemoveResponses,
   AuthSetErrors,
@@ -34,10 +34,14 @@ import type {
   FindSymbolsResponses,
   FindTextResponses,
   FormatterStatusResponses,
+  GlobalDiscoverInResponses,
+  GlobalDiscoverResponses,
   GlobalDisposeResponses,
   GlobalEventResponses,
   GlobalHealthResponses,
   InstanceDisposeResponses,
+  InstanceTreeDirectoryResponses,
+  InstanceTreeResponses,
   LspStatusResponses,
   McpAddErrors,
   McpAddResponses,
@@ -66,6 +70,12 @@ import type {
   PermissionRespondErrors,
   PermissionRespondResponses,
   PermissionRuleset,
+  PickerListResponses,
+  PickerRejectErrors,
+  PickerRejectResponses,
+  PickerReplyErrors,
+  PickerReplyResponses,
+  PickerSelection,
   ProjectCurrentResponses,
   ProjectListResponses,
   ProjectUpdateErrors,
@@ -93,6 +103,10 @@ import type {
   QuestionRejectResponses,
   QuestionReplyErrors,
   QuestionReplyResponses,
+  RobloxAuthLoginErrors,
+  RobloxAuthLoginResponses,
+  RobloxAuthLogoutResponses,
+  RobloxAuthStatusResponses,
   SessionAbortErrors,
   SessionAbortResponses,
   SessionChildrenErrors,
@@ -249,6 +263,42 @@ export class Global extends HeyApiClient {
     return (options?.client ?? this.client).post<GlobalDisposeResponses, unknown, ThrowOnError>({
       url: "/global/dispose",
       ...options,
+    })
+  }
+
+  /**
+   * Discover Roblox projects
+   *
+   * Scan common directories for Roblox projects (Rojo, Wally, .rbxl files).
+   */
+  public discover<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
+    return (options?.client ?? this.client).get<GlobalDiscoverResponses, unknown, ThrowOnError>({
+      url: "/global/discover",
+      ...options,
+    })
+  }
+
+  /**
+   * Discover Roblox projects in specific directories
+   *
+   * Scan specified directories for Roblox projects.
+   */
+  public discoverIn<ThrowOnError extends boolean = false>(
+    parameters?: {
+      body?: unknown
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams([parameters], [{ args: [{ key: "body", map: "body" }] }])
+    return (options?.client ?? this.client).post<GlobalDiscoverInResponses, unknown, ThrowOnError>({
+      url: "/global/discover",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
     })
   }
 }
@@ -1928,6 +1978,94 @@ export class Question extends HeyApiClient {
   }
 }
 
+export class Picker extends HeyApiClient {
+  /**
+   * List pending pickers
+   *
+   * Get all pending picker requests across all sessions.
+   */
+  public list<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams([parameters], [{ args: [{ in: "query", key: "directory" }] }])
+    return (options?.client ?? this.client).get<PickerListResponses, unknown, ThrowOnError>({
+      url: "/picker",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Reply to picker request
+   *
+   * Provide selections to a picker request from the AI assistant.
+   */
+  public reply<ThrowOnError extends boolean = false>(
+    parameters: {
+      requestID: string
+      directory?: string
+      selections?: PickerSelection
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "requestID" },
+            { in: "query", key: "directory" },
+            { in: "body", key: "selections" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<PickerReplyResponses, PickerReplyErrors, ThrowOnError>({
+      url: "/picker/{requestID}/reply",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Reject picker request
+   *
+   * Reject a picker request from the AI assistant.
+   */
+  public reject<ThrowOnError extends boolean = false>(
+    parameters: {
+      requestID: string
+      directory?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "requestID" },
+            { in: "query", key: "directory" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<PickerRejectResponses, PickerRejectErrors, ThrowOnError>({
+      url: "/picker/{requestID}/reject",
+      ...options,
+      ...params,
+    })
+  }
+}
+
 export class Oauth extends HeyApiClient {
   /**
    * OAuth authorize
@@ -2488,6 +2626,173 @@ export class Mcp extends HeyApiClient {
   }
 }
 
+export class Auth2 extends HeyApiClient {
+  /**
+   * Roblox auth status
+   *
+   * Check if the user is authenticated with Roblox
+   */
+  public status<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams([parameters], [{ args: [{ in: "query", key: "directory" }] }])
+    return (options?.client ?? this.client).get<RobloxAuthStatusResponses, unknown, ThrowOnError>({
+      url: "/roblox/status",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Login to Roblox
+   *
+   * Authenticate with Roblox using a .ROBLOSECURITY cookie. The cookie is validated and stored securely.
+   */
+  public login<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      cookie?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "body", key: "cookie" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<RobloxAuthLoginResponses, RobloxAuthLoginErrors, ThrowOnError>({
+      url: "/roblox/login",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Logout from Roblox
+   *
+   * Remove stored Roblox credentials
+   */
+  public logout<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams([parameters], [{ args: [{ in: "query", key: "directory" }] }])
+    return (options?.client ?? this.client).post<RobloxAuthLogoutResponses, unknown, ThrowOnError>({
+      url: "/roblox/logout",
+      ...options,
+      ...params,
+    })
+  }
+}
+
+export class Roblox extends HeyApiClient {
+  private _auth?: Auth2
+  get auth(): Auth2 {
+    return (this._auth ??= new Auth2({ client: this.client }))
+  }
+}
+
+export class Tree extends HeyApiClient {
+  /**
+   * Get instance tree for directory
+   *
+   * Get the parsed Rojo project instance tree for a specific directory
+   */
+  public directory<ThrowOnError extends boolean = false>(
+    parameters: {
+      path_directory: string
+      query_directory?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            {
+              in: "path",
+              key: "path_directory",
+              map: "directory",
+            },
+            {
+              in: "query",
+              key: "query_directory",
+              map: "directory",
+            },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<InstanceTreeDirectoryResponses, unknown, ThrowOnError>({
+      url: "/instance-tree/tree/{directory}",
+      ...options,
+      ...params,
+    })
+  }
+}
+
+export class Instance extends HeyApiClient {
+  /**
+   * Get instance tree
+   *
+   * Get the parsed Rojo project instance tree for the current directory
+   */
+  public tree<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams([parameters], [{ args: [{ in: "query", key: "directory" }] }])
+    return (options?.client ?? this.client).get<InstanceTreeResponses, unknown, ThrowOnError>({
+      url: "/instance-tree/tree",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Dispose instance
+   *
+   * Clean up and dispose the current OpenCode instance, releasing all resources.
+   */
+  public dispose<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams([parameters], [{ args: [{ in: "query", key: "directory" }] }])
+    return (options?.client ?? this.client).post<InstanceDisposeResponses, unknown, ThrowOnError>({
+      url: "/instance/dispose",
+      ...options,
+      ...params,
+    })
+  }
+
+  private _tree?: Tree
+  get tree2(): Tree {
+    return (this._tree ??= new Tree({ client: this.client }))
+  }
+}
+
 export class Control extends HeyApiClient {
   /**
    * Get next TUI request
@@ -2846,27 +3151,6 @@ export class Tui extends HeyApiClient {
   }
 }
 
-export class Instance extends HeyApiClient {
-  /**
-   * Dispose instance
-   *
-   * Clean up and dispose the current OpenCode instance, releasing all resources.
-   */
-  public dispose<ThrowOnError extends boolean = false>(
-    parameters?: {
-      directory?: string
-    },
-    options?: Options<never, ThrowOnError>,
-  ) {
-    const params = buildClientParams([parameters], [{ args: [{ in: "query", key: "directory" }] }])
-    return (options?.client ?? this.client).post<InstanceDisposeResponses, unknown, ThrowOnError>({
-      url: "/instance/dispose",
-      ...options,
-      ...params,
-    })
-  }
-}
-
 export class Path extends HeyApiClient {
   /**
    * Get paths
@@ -3055,7 +3339,7 @@ export class Formatter extends HeyApiClient {
   }
 }
 
-export class Auth2 extends HeyApiClient {
+export class Auth3 extends HeyApiClient {
   /**
    * Remove auth credentials
    *
@@ -3095,7 +3379,7 @@ export class Auth2 extends HeyApiClient {
     parameters: {
       providerID: string
       directory?: string
-      auth?: Auth3
+      auth?: Auth4
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -3208,6 +3492,11 @@ export class OpencodeClient extends HeyApiClient {
     return (this._question ??= new Question({ client: this.client }))
   }
 
+  private _picker?: Picker
+  get picker(): Picker {
+    return (this._picker ??= new Picker({ client: this.client }))
+  }
+
   private _provider?: Provider
   get provider(): Provider {
     return (this._provider ??= new Provider({ client: this.client }))
@@ -3228,14 +3517,19 @@ export class OpencodeClient extends HeyApiClient {
     return (this._mcp ??= new Mcp({ client: this.client }))
   }
 
-  private _tui?: Tui
-  get tui(): Tui {
-    return (this._tui ??= new Tui({ client: this.client }))
+  private _roblox?: Roblox
+  get roblox(): Roblox {
+    return (this._roblox ??= new Roblox({ client: this.client }))
   }
 
   private _instance?: Instance
   get instance(): Instance {
     return (this._instance ??= new Instance({ client: this.client }))
+  }
+
+  private _tui?: Tui
+  get tui(): Tui {
+    return (this._tui ??= new Tui({ client: this.client }))
   }
 
   private _path?: Path
@@ -3268,9 +3562,9 @@ export class OpencodeClient extends HeyApiClient {
     return (this._formatter ??= new Formatter({ client: this.client }))
   }
 
-  private _auth?: Auth2
-  get auth(): Auth2 {
-    return (this._auth ??= new Auth2({ client: this.client }))
+  private _auth?: Auth3
+  get auth(): Auth3 {
+    return (this._auth ??= new Auth3({ client: this.client }))
   }
 
   private _event?: Event

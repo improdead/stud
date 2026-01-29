@@ -19,6 +19,7 @@ import {
   type QuestionRequest,
   createOpencodeClient,
 } from "@stud/sdk/v2/client"
+import type { PickerRequest } from "@stud/ui/context"
 import { createStore, produce, reconcile, type SetStoreFunction, type Store } from "solid-js/store"
 import { Binary } from "@stud/util/binary"
 import { retry } from "@stud/util/retry"
@@ -82,6 +83,9 @@ type State = {
   }
   question: {
     [sessionID: string]: QuestionRequest[]
+  }
+  picker: {
+    [sessionID: string]: PickerRequest[]
   }
   mcp: {
     [name: string]: McpStatus
@@ -334,6 +338,7 @@ function createGlobalSync() {
           todo: {},
           permission: {},
           question: {},
+          picker: {},
           mcp: {},
           lsp: [],
           vcs: vcsStore.value,
@@ -589,6 +594,7 @@ function createGlobalSync() {
         store.todo[sessionID] !== undefined ||
         store.permission[sessionID] !== undefined ||
         store.question[sessionID] !== undefined ||
+        store.picker[sessionID] !== undefined ||
         store.session_status[sessionID] !== undefined
 
       if (!hasAny) return
@@ -609,6 +615,7 @@ function createGlobalSync() {
           delete draft.todo[sessionID]
           delete draft.permission[sessionID]
           delete draft.question[sessionID]
+          delete draft.picker[sessionID]
           delete draft.session_status[sessionID]
         }),
       )
@@ -846,6 +853,44 @@ function createGlobalSync() {
         if (!result.found) break
         setStore(
           "question",
+          event.properties.sessionID,
+          produce((draft) => {
+            draft.splice(result.index, 1)
+          }),
+        )
+        break
+      }
+      case "picker.asked": {
+        const sessionID = event.properties.sessionID
+        const pickers = store.picker[sessionID]
+        if (!pickers) {
+          setStore("picker", sessionID, [event.properties as PickerRequest])
+          break
+        }
+
+        const result = Binary.search(pickers, event.properties.id, (p) => p.id)
+        if (result.found) {
+          setStore("picker", sessionID, result.index, reconcile(event.properties as PickerRequest))
+          break
+        }
+
+        setStore(
+          "picker",
+          sessionID,
+          produce((draft) => {
+            draft.splice(result.index, 0, event.properties as PickerRequest)
+          }),
+        )
+        break
+      }
+      case "picker.replied":
+      case "picker.rejected": {
+        const pickers = store.picker[event.properties.sessionID]
+        if (!pickers) break
+        const result = Binary.search(pickers, event.properties.requestID, (p) => p.id)
+        if (!result.found) break
+        setStore(
+          "picker",
           event.properties.sessionID,
           produce((draft) => {
             draft.splice(result.index, 1)

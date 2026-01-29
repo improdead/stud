@@ -1,6 +1,7 @@
 import z from "zod"
 import { Tool } from "../tool"
 import { RobloxAuth } from "@/roblox/auth"
+import { Picker } from "@/picker"
 
 const TOOLBOX_API = "https://apis.roblox.com/toolbox-service/v1"
 const TIMEOUT_MS = 15000
@@ -180,13 +181,17 @@ export const RobloxToolboxSearchTool = Tool.define<
     category: z.ZodOptional<z.ZodString>
     freeOnly: z.ZodOptional<z.ZodBoolean>
     limit: z.ZodOptional<z.ZodNumber>
+    recommended: z.ZodOptional<z.ZodArray<z.ZodNumber>>
   }>,
-  { keyword: string; category: string; resultCount: number; assets: ToolboxAsset[] }
+  { keyword: string; category: string; resultCount: number; assets: ToolboxAsset[]; selectedAssets: ToolboxAsset[] }
 >("roblox_toolbox_search", {
   description: `Search the Roblox toolbox for free assets.
 
 Searches for models, audio, decals, meshes, plugins, and other assets by keyword.
 By default, only returns FREE assets that can be inserted into your game.
+
+The user will be shown the results and can select which assets they want.
+You can provide 'recommended' asset IDs for Quick Add functionality.
 
 Categories:
 - Models (default): 3D models, tools, NPCs, vehicles, etc.
@@ -198,7 +203,7 @@ Categories:
 - Videos: Video assets
 - Animations: Character animations
 
-Returns asset IDs that can be inserted using InsertService:LoadAsset(id).
+Returns the assets selected by the user.
 
 Example: Search "car" in Models category to find free car models.`,
   parameters: z.object({
@@ -209,8 +214,9 @@ Example: Search "car" in Models category to find free car models.`,
       .describe("Asset category: Models, Audio, Decals, Meshes, Plugins, Images, Videos, Animations (default: Models)"),
     freeOnly: z.boolean().optional().describe("Only return free assets (default: true)"),
     limit: z.number().min(1).max(30).optional().describe("Maximum results (1-30, default: 10)"),
+    recommended: z.array(z.number()).optional().describe("Your recommended asset IDs from the results for Quick Add"),
   }),
-  async execute(params) {
+  async execute(params, ctx) {
     const category = (params.category as AssetCategoryName) || "Models"
     const categoryId = AssetCategories[category] || AssetCategories.Models
     const freeOnly = params.freeOnly !== false // default true
@@ -227,7 +233,7 @@ Example: Search "car" in Models category to find free car models.`,
       return {
         title: `Search: ${params.keyword}`,
         output: `Error searching toolbox: ${searchResult.error}`,
-        metadata: { keyword: params.keyword, category, resultCount: 0, assets: [] },
+        metadata: { keyword: params.keyword, category, resultCount: 0, assets: [], selectedAssets: [] },
       }
     }
 
@@ -236,7 +242,7 @@ Example: Search "car" in Models category to find free car models.`,
       return {
         title: `Search: ${params.keyword}`,
         output: `No ${category.toLowerCase()} found for "${params.keyword}".`,
-        metadata: { keyword: params.keyword, category, resultCount: 0, assets: [] },
+        metadata: { keyword: params.keyword, category, resultCount: 0, assets: [], selectedAssets: [] },
       }
     }
 
@@ -250,7 +256,7 @@ Example: Search "car" in Models category to find free car models.`,
       return {
         title: `Search: ${params.keyword}`,
         output: `Found ${assetIds.length} result(s) for "${params.keyword}":\n\n${output}`,
-        metadata: { keyword: params.keyword, category, resultCount: assetIds.length, assets: [] },
+        metadata: { keyword: params.keyword, category, resultCount: assetIds.length, assets: [], selectedAssets: [] },
       }
     }
 
@@ -259,7 +265,7 @@ Example: Search "car" in Models category to find free car models.`,
     // 1. Free (if freeOnly is true)
     // 2. Purchasable (can actually be inserted/used)
     // 3. Published (publicly available)
-    let assets = detailsResult.data!.data.filter((a) => {
+    const assets = detailsResult.data!.data.filter((a) => {
       const canUse = a.fiatProduct.purchasable && a.fiatProduct.published !== false
       if (freeOnly) {
         return a.fiatProduct.isFree && canUse
@@ -271,7 +277,7 @@ Example: Search "car" in Models category to find free car models.`,
       return {
         title: `Search: ${params.keyword}`,
         output: `No usable free ${category.toLowerCase()} found for "${params.keyword}". Try setting freeOnly: false to see paid assets.`,
-        metadata: { keyword: params.keyword, category, resultCount: 0, assets: [] },
+        metadata: { keyword: params.keyword, category, resultCount: 0, assets: [], selectedAssets: [] },
       }
     }
 
@@ -296,32 +302,91 @@ Example: Search "car" in Models category to find free car models.`,
       description: a.asset.description,
     }))
 
-    const details = assets.map((a, index) => {
-      const verified = a.creator.isVerifiedCreator ? " (Verified)" : ""
-      const scripts = a.asset.hasScripts ? ` | ${a.asset.scriptCount} scripts` : ""
-      const votes = a.voting.voteCount > 0 ? ` | ${a.voting.upVotePercent}% liked (${a.voting.voteCount} votes)` : ""
-      const thumb = structuredAssets[index]?.thumbnailUrl || getPlaceholderThumbnail(a.asset.id)
+    // Step 5: Show picker to user and wait for selection
+    const pickerItems: Picker.Item[] = structuredAssets.map((a) => ({
+      id: a.id,
+      name: a.name,
+      thumbnailUrl: a.thumbnailUrl,
+      description: `${a.type} | ${a.creator}${a.verified ? " ✓" : ""}`,
+      metadata: {
+        type: a.type,
+        creator: a.creator,
+        verified: a.verified,
+        votePercent: a.votePercent,
+        voteCount: a.voteCount,
+        hasScripts: a.hasScripts,
+        scriptCount: a.scriptCount,
+      },
+    }))
 
-      return (
-        `### [${a.asset.id}] ${a.asset.name}\n\n` +
-        `![${a.asset.name}](${thumb})\n\n` +
-        `${getAssetTypeName(a.asset.typeId)} | Free | By: ${a.creator.name}${verified}${scripts}${votes}`
-      )
-    })
-
-    const output = [`Found ${assets.length} free ${category.toLowerCase()} for "${params.keyword}":\n`, ...details]
-
-    if (searchResult.data!.nextPageCursor) {
-      output.push(`\nMore results available (${searchResult.data!.totalResults} total).`)
+    let selectedIds: (string | number)[] = []
+    try {
+      selectedIds = await Picker.ask({
+        sessionID: ctx.sessionID,
+        title: `Select ${category.toLowerCase()} for "${params.keyword}"`,
+        items: pickerItems,
+        recommended: params.recommended,
+        multiple: true,
+        tool: ctx.callID ? { messageID: ctx.messageID, callID: ctx.callID } : undefined,
+      })
+    } catch (err) {
+      if (err instanceof Picker.RejectedError) {
+        return {
+          title: `Search: ${params.keyword}`,
+          output: `User cancelled asset selection.`,
+          metadata: {
+            keyword: params.keyword,
+            category,
+            resultCount: assets.length,
+            assets: structuredAssets,
+            selectedAssets: [],
+          },
+        }
+      }
+      throw err
     }
 
-    output.push(`\nTo insert an asset into your game, use the roblox_insert_asset tool with the asset ID.`)
-    output.push(`Or manually: game:GetService("InsertService"):LoadAsset(ASSET_ID).Parent = workspace`)
+    const selectedAssets = structuredAssets.filter((a) => selectedIds.includes(a.id))
+
+    if (selectedAssets.length === 0) {
+      return {
+        title: `Search: ${params.keyword}`,
+        output: `No assets were selected.`,
+        metadata: {
+          keyword: params.keyword,
+          category,
+          resultCount: assets.length,
+          assets: structuredAssets,
+          selectedAssets: [],
+        },
+      }
+    }
+
+    const selectedDetails = selectedAssets.map((a) => {
+      const verified = a.verified ? " (Verified)" : ""
+      const scripts = a.hasScripts ? ` | ${a.scriptCount} scripts` : ""
+      const votes = a.voteCount > 0 ? ` | ${a.votePercent}% liked (${a.voteCount} votes)` : ""
+      return `- [${a.id}] ${a.name} - ${a.type} | By: ${a.creator}${verified}${scripts}${votes}`
+    })
+
+    const output = [
+      `User selected ${selectedAssets.length} asset(s) for "${params.keyword}":`,
+      "",
+      ...selectedDetails,
+      "",
+      `To insert these assets, use the roblox_insert_asset tool with each asset ID.`,
+    ]
 
     return {
       title: `${category}: ${params.keyword}`,
       output: output.join("\n"),
-      metadata: { keyword: params.keyword, category, resultCount: assets.length, assets: structuredAssets },
+      metadata: {
+        keyword: params.keyword,
+        category,
+        resultCount: assets.length,
+        assets: structuredAssets,
+        selectedAssets,
+      },
     }
   },
 })

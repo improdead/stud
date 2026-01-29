@@ -7,6 +7,7 @@ export namespace Identifier {
     message: "msg",
     permission: "per",
     question: "que",
+    picker: "pck",
     user: "usr",
     part: "prt",
     pty: "pty",

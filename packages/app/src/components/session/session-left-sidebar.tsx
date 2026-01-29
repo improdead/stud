@@ -143,11 +143,8 @@ export function SessionLeftSidebar(props: SessionLeftSidebarProps) {
         <div class="flex-1 overflow-y-auto px-2">
           <div class="flex flex-col gap-0.5">
             <Index each={sessions()}>
-              {(session, index) => (
-                <Motion.button
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: mounted() ? 1 : 0, x: mounted() ? 0 : -10 }}
-                  transition={{ duration: 0.25, delay: 0.25 + index * 0.03 }}
+              {(session) => (
+                <button
                   type="button"
                   class="flex items-center gap-2 px-2 py-1.5 rounded text-left transition-all duration-150 active:scale-[0.98] group/session"
                   classList={{
@@ -171,7 +168,7 @@ export function SessionLeftSidebar(props: SessionLeftSidebarProps) {
                       aria-label={language.t("common.delete")}
                     />
                   </div>
-                </Motion.button>
+                </button>
               )}
             </Index>
 

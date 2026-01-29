@@ -53,10 +53,7 @@ export function SessionPlanView(props: SessionPlanViewProps) {
       {/* Plan header */}
       <div class="flex items-center justify-between px-8 py-6 border-b border-transparent">
         <div>
-          <h2 class="text-24-medium text-text-strong mb-1">{language.t("planningMode.title")}</h2>
-          <Show when={planPath()}>
-            <p class="text-13-regular text-text-muted font-mono">{planPath()}</p>
-          </Show>
+          <h2 class="text-24-medium text-text-strong">{language.t("planningMode.title")}</h2>
         </div>
         <Show when={isPlanAgent()}>
           <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-raised-base border border-border-base">

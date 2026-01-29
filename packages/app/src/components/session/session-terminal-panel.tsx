@@ -136,7 +136,7 @@ export function SessionTerminalPanel(props: TerminalPanelProps) {
       id="terminal-panel"
       role="region"
       aria-label={language.t("terminal.title")}
-      class="relative w-full flex flex-col shrink-0 border-t border-border-weak-base bg-surface-inset-base"
+      class="relative w-full flex flex-col shrink-0 border-t border-border-weak-base bg-background-stronger"
       style={{ height: `${layout.terminal.height()}px` }}
     >
       {/* Resize Handle */}
@@ -154,7 +154,7 @@ export function SessionTerminalPanel(props: TerminalPanelProps) {
         when={terminal.ready()}
         fallback={
           <div class="flex flex-col h-full pointer-events-none">
-            <div class="h-9 flex items-center gap-2 px-3 border-b border-border-weak-base bg-surface-inset-base">
+            <div class="h-9 flex items-center gap-2 px-3 border-b border-border-weak-base bg-background-stronger">
               <For each={props.handoffTerminals}>
                 {(title) => (
                   <div class="px-2.5 py-1 rounded bg-white/5 text-12-medium text-text-subtle truncate max-w-32">
@@ -182,7 +182,7 @@ export function SessionTerminalPanel(props: TerminalPanelProps) {
           <ConstrainDragYAxis />
           <div class="flex flex-col h-full">
             {/* Terminal Header/Tabs */}
-            <div class="h-9 flex items-center border-b border-border-weak-base bg-surface-inset-base">
+            <div class="h-9 flex items-center border-b border-border-weak-base bg-background-stronger">
               {/* Tab List */}
               <div class="flex-1 flex items-center h-full overflow-x-auto scrollbar-none">
                 <Tabs
@@ -256,7 +256,7 @@ export function SessionTerminalPanel(props: TerminalPanelProps) {
             </div>
 
             {/* Terminal Content */}
-            <div class="flex-1 min-h-0 relative bg-surface-inset-base">
+            <div class="flex-1 min-h-0 relative">
               <For each={terminal.all()}>
                 {(pty) => (
                   <div
@@ -388,7 +388,7 @@ function TerminalTab(props: TerminalTabProps) {
         type="button"
         class="h-full px-3 flex items-center gap-2 text-12-medium border-r border-border-weak-base transition-colors duration-150"
         classList={{
-          "bg-surface-inset-base text-text-base": props.isActive,
+          "bg-background-stronger text-text-base": props.isActive,
           "bg-transparent text-text-subtle hover:text-text-weak hover:bg-white/[0.02]": !props.isActive,
         }}
         onClick={focus}

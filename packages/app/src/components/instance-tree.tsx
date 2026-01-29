@@ -93,6 +93,7 @@ function InstanceTreeNode(props: InstanceTreeNodeProps) {
       path: props.node.path,
       name: props.node.name,
       className: props.node.className,
+      filePath: props.node.filePath,
     })
     studioRequest("/selection/set", { paths: [props.node.path] })
     if (props.node.filePath && props.onFileClick) {

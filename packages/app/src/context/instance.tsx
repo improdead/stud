@@ -7,6 +7,7 @@ export type InstanceSelection = {
   path: string
   name: string
   className: string
+  filePath?: string
 }
 
 export const { use: useInstance, provider: InstanceProvider } = createSimpleContext({
@@ -19,7 +20,14 @@ export const { use: useInstance, provider: InstanceProvider } = createSimpleCont
     const setSelected = (next: InstanceSelection | null) => {
       const current = store.selected
       if (!next && !current) return
-      if (next && current && next.path === current.path) return
+      const same =
+        next &&
+        current &&
+        next.path === current.path &&
+        next.name === current.name &&
+        next.className === current.className &&
+        next.filePath === current.filePath
+      if (same) return
       setStore("selected", next)
     }
 

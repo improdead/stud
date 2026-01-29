@@ -62,7 +62,7 @@ import { usePermission } from "@/context/permission"
 import { decode64 } from "@/utils/base64"
 import { showToast } from "@stud/ui/toast"
 import { onSendMessage } from "@/utils/events"
-import { ContextToolbar } from "@/components/context-toolbar"
+
 import {
   SessionHeader,
   SessionContextTab,
@@ -1988,7 +1988,7 @@ export default function Page() {
           {/* Prompt input */}
           <div
             ref={(el) => (promptDock = el)}
-            class="absolute inset-x-0 bottom-0 pt-10 pb-6 flex flex-col justify-end items-end z-50 px-6 bg-gradient-to-t from-background-stronger via-background-stronger to-transparent pointer-events-none"
+            class="absolute inset-x-0 bottom-0 pt-10 pb-6 flex flex-col justify-end items-center z-50 px-6 bg-gradient-to-t from-background-stronger via-background-stronger to-transparent pointer-events-none"
           >
             <div
               classList={{
@@ -1996,9 +1996,6 @@ export default function Page() {
                 "md:max-w-[640px]": !showTabs(),
               }}
             >
-              <div class="mb-3 flex justify-end">
-                <ContextToolbar />
-              </div>
               <Show when={request()} keyed>
                 {(perm) => (
                   <div data-component="tool-part-wrapper" data-permission="true" class="mb-3">

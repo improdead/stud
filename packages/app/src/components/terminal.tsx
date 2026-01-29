@@ -152,6 +152,12 @@ export const Terminal = (props: TerminalProps) => {
       })
       term = t
 
+      // Apply current theme colors immediately after terminal creation
+      // This ensures correct colors even if the createEffect ran before terminal was ready
+      const colors = getTerminalColors()
+      const applyTheme = (t as unknown as { setOption?: (key: string, value: TerminalColors) => void }).setOption
+      if (applyTheme) applyTheme("theme", colors)
+
       const copy = () => {
         const selection = t.getSelection()
         if (!selection) return false

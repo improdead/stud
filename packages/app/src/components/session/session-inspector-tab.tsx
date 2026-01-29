@@ -1,10 +1,73 @@
-import { createMemo, createSignal, Show } from "solid-js"
+import { createEffect, createMemo, createSignal, Show } from "solid-js"
+import { Dynamic } from "solid-js/web"
 import { Button } from "@stud/ui/button"
 import { InlineInput } from "@stud/ui/inline-input"
+import { InstanceIcon } from "@stud/ui/instance-icon"
+import { useCodeComponent } from "@stud/ui/context/code"
 import { usePrompt } from "@/context/prompt"
 import { useInstance } from "@/context/instance"
+import { useFile } from "@/context/file"
 
-export function SessionInspectorTab() {
+const SCRIPT_CLASSES = ["Script", "LocalScript", "ModuleScript"]
+
+function isScript(className: string) {
+  return SCRIPT_CLASSES.includes(className)
+}
+
+function ScriptPreview(props: { filePath: string; name: string; className: string }) {
+  const file = useFile()
+  const codeComponent = useCodeComponent()
+  const [cacheKey, setCacheKey] = createSignal(0)
+
+  createEffect(() => {
+    file.load(props.filePath)
+  })
+
+  const fileState = createMemo(() => file.get(props.filePath))
+  const contents = createMemo(() => {
+    const state = fileState()
+    if (!state?.content) return ""
+    if (state.content.type === "text") return state.content.content
+    return ""
+  })
+
+  createEffect(() => {
+    contents()
+    setCacheKey((k) => k + 1)
+  })
+
+  return (
+    <div class="flex flex-col h-full overflow-hidden">
+      <div class="flex items-center gap-2 px-4 py-2 border-b border-border-base">
+        <InstanceIcon className={props.className} class="size-4 shrink-0" />
+        <span class="text-13-medium text-text-strong truncate">{props.name}</span>
+      </div>
+      <div class="flex-1 min-h-0 overflow-auto">
+        <Show
+          when={!fileState()?.loading && contents()}
+          fallback={
+            <div class="px-4 py-3 text-12-regular text-text-weak">
+              {fileState()?.loading ? "Loading..." : "No content"}
+            </div>
+          }
+        >
+          <Dynamic
+            component={codeComponent}
+            file={{
+              name: props.filePath,
+              contents: contents(),
+              cacheKey: `script-preview-${cacheKey()}`,
+            }}
+            overflow="scroll"
+            class="select-text"
+          />
+        </Show>
+      </div>
+    </div>
+  )
+}
+
+function InstanceInspector() {
   const prompt = usePrompt()
   const instance = useInstance()
   const selection = createMemo(() => instance.selected())
@@ -142,5 +205,24 @@ export function SessionInspectorTab() {
         )}
       </Show>
     </div>
+  )
+}
+
+export function SessionInspectorTab() {
+  const instance = useInstance()
+  const selection = createMemo(() => instance.selected())
+
+  const scriptSelection = createMemo(() => {
+    const sel = selection()
+    if (!sel) return null
+    if (!sel.filePath) return null
+    if (!isScript(sel.className)) return null
+    return sel
+  })
+
+  return (
+    <Show when={scriptSelection()} fallback={<InstanceInspector />}>
+      {(script) => <ScriptPreview filePath={script().filePath!} name={script().name} className={script().className} />}
+    </Show>
   )
 }

@@ -55,7 +55,7 @@ export function SessionLeftSidebar(props: SessionLeftSidebarProps) {
     const now = Date.now()
     const oneMinuteAgo = now - 60 * 1000
     return store.session
-      .filter((s) => s.directory === store.path.directory)
+      .filter((s) => s.directory === dir)
       .filter((s) => !s.parentID && !s.time?.archived)
       .toSorted((a, b) => {
         const aUpdated = a.time.updated ?? a.time.created

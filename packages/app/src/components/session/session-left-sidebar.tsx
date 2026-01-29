@@ -1,12 +1,16 @@
-import { createMemo, For, Show } from "solid-js"
+import { createMemo, createSignal, For, Show } from "solid-js"
 import { useParams, useNavigate } from "@solidjs/router"
 import { useLanguage } from "@/context/language"
 import { useGlobalSync } from "@/context/global-sync"
+import { useDialog } from "@stud/ui/context/dialog"
 import { base64Encode } from "@stud/util/encode"
 import { decode64 } from "@/utils/base64"
 import { Icon } from "@stud/ui/icon"
 import { IconButton } from "@stud/ui/icon-button"
 import { ResizeHandle } from "@stud/ui/resize-handle"
+import { Collapsible } from "@stud/ui/collapsible"
+import { DialogProjectRules } from "@/components/dialog-project-rules"
+import { InstanceTree } from "@/components/instance-tree"
 import type { Session } from "@stud/sdk/v2/client"
 
 interface SessionLeftSidebarProps {
@@ -19,6 +23,7 @@ export function SessionLeftSidebar(props: SessionLeftSidebarProps) {
   const navigate = useNavigate()
   const globalSync = useGlobalSync()
   const language = useLanguage()
+  const dialog = useDialog()
 
   const directory = createMemo(() => decode64(params.dir) ?? "")
 
@@ -58,6 +63,14 @@ export function SessionLeftSidebar(props: SessionLeftSidebarProps) {
     navigate(`/${params.dir}/session`)
   }
 
+  const navigateToHome = () => {
+    navigate("/")
+  }
+
+  const showProjectRules = () => {
+    dialog.show(() => <DialogProjectRules />)
+  }
+
   const isActive = (session: Session) => session.id === params.id
 
   return (
@@ -67,6 +80,7 @@ export function SessionLeftSidebar(props: SessionLeftSidebarProps) {
         <button
           type="button"
           class="flex items-center gap-2.5 px-2.5 py-1.5 rounded text-13-medium text-text-muted hover:text-text-base hover:bg-white/5 transition-colors group"
+          onClick={navigateToHome}
         >
           <Icon name="menu" size="small" class="text-text-subtle group-hover:text-text-base transition-colors" />
           <span>Home</span>
@@ -74,6 +88,7 @@ export function SessionLeftSidebar(props: SessionLeftSidebarProps) {
         <button
           type="button"
           class="flex items-center gap-2.5 px-2.5 py-1.5 rounded text-13-medium text-text-muted hover:text-text-base hover:bg-white/5 transition-colors group"
+          onClick={showProjectRules}
         >
           <Icon name="checklist" size="small" class="text-text-subtle group-hover:text-text-base transition-colors" />
           <span>Project Rules</span>
@@ -122,35 +137,30 @@ export function SessionLeftSidebar(props: SessionLeftSidebarProps) {
         </div>
       </div>
 
-      {/* Pages Section */}
-      <div class="mt-2">
-        <div class="flex items-center justify-between px-3 py-1.5 group">
-          <span class="text-11-medium text-text-subtle uppercase tracking-wider group-hover:text-text-weak transition-colors">
-            Pages
-          </span>
-          <div class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
-            <IconButton
-              icon="folder"
-              variant="ghost"
-              class="size-4 text-text-subtle hover:text-text-base"
-              aria-label="Add folder"
+      {/* Explorer Section */}
+      <div class="mt-2 flex-1 min-h-0 flex flex-col">
+        <Collapsible variant="ghost" class="w-full flex-1 min-h-0 flex flex-col" forceMount={false} open={true}>
+          <Collapsible.Trigger>
+            <div class="flex items-center justify-between px-3 py-1.5 group cursor-pointer hover:bg-white/5 rounded mx-1">
+              <div class="flex items-center gap-1.5">
+                <Icon name="chevron-down" size="small" class="text-text-subtle" />
+                <span class="text-11-medium text-text-subtle uppercase tracking-wider group-hover:text-text-weak transition-colors">
+                  {language.t("sidebar.instanceTree")}
+                </span>
+              </div>
+            </div>
+          </Collapsible.Trigger>
+          <Collapsible.Content class="flex-1 min-h-0 overflow-y-auto">
+            <InstanceTree
+              directory={directory()}
+              class="px-1"
+              onFileClick={(filePath) => {
+                // TODO: Open file in editor
+                console.log("Open file:", filePath)
+              }}
             />
-            <IconButton
-              icon="plus-small"
-              variant="ghost"
-              class="size-4 text-text-subtle hover:text-text-base"
-              aria-label="Add page"
-            />
-          </div>
-        </div>
-
-        {/* Explorer placeholder */}
-        <div class="px-2 pb-2">
-          <div class="flex items-center gap-2 px-2 py-1.5 text-13-regular text-text-muted opacity-60">
-            <Icon name="folder" size="small" />
-            <span>{language.t("sidebar.instanceTree.placeholder")}</span>
-          </div>
-        </div>
+          </Collapsible.Content>
+        </Collapsible>
       </div>
 
       {/* Footer */}

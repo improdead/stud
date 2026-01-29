@@ -71,6 +71,7 @@ import {
   NewSessionView,
   SessionLeftSidebar,
   SessionPlanView,
+  SessionTerminalPanel,
 } from "@/components/session"
 import { navMark, navParams } from "@/utils/perf"
 import { same } from "@/utils/same"
@@ -2822,149 +2823,13 @@ export default function Page() {
       </div>
 
       <Show when={isDesktop() && view().terminal.opened()}>
-        <div
-          id="terminal-panel"
-          role="region"
-          aria-label={language.t("terminal.title")}
-          class="relative w-full flex flex-col shrink-0 border-t border-[#27272a] bg-[#09090b]"
-          style={{ height: `${layout.terminal.height()}px` }}
-        >
-          <ResizeHandle
-            direction="vertical"
-            size={layout.terminal.height()}
-            min={100}
-            max={window.innerHeight * 0.6}
-            collapseThreshold={50}
-            onResize={layout.terminal.resize}
-            onCollapse={view().terminal.close}
-          />
-          <Show
-            when={terminal.ready()}
-            fallback={
-              <div class="flex flex-col h-full pointer-events-none">
-                <div class="h-10 flex items-center gap-2 px-2 border-b border-border-weak-base bg-background-stronger overflow-hidden">
-                  <For each={handoff.terminals}>
-                    {(title) => (
-                      <div class="px-2 py-1 rounded-md bg-surface-base text-14-regular text-text-weak truncate max-w-40">
-                        {title}
-                      </div>
-                    )}
-                  </For>
-                  <div class="flex-1" />
-                  <div class="text-text-weak pr-2">
-                    {language.t("common.loading")}
-                    {language.t("common.loading.ellipsis")}
-                  </div>
-                </div>
-                <div class="flex-1 flex items-center justify-center text-text-weak">
-                  {language.t("terminal.loading")}
-                </div>
-              </div>
-            }
-          >
-            <DragDropProvider
-              onDragStart={handleTerminalDragStart}
-              onDragEnd={handleTerminalDragEnd}
-              onDragOver={handleTerminalDragOver}
-              collisionDetector={closestCenter}
-            >
-              <DragDropSensors />
-              <ConstrainDragYAxis />
-              <div class="flex flex-col h-full">
-                <Tabs
-                  variant="alt"
-                  value={terminal.active()}
-                  onChange={(id) => {
-                    // Only switch tabs if not in the middle of starting edit mode
-                    terminal.open(id)
-                  }}
-                  class="!h-auto !flex-none"
-                >
-                  <Tabs.List class="h-10">
-                    <SortableProvider ids={terminal.all().map((t: LocalPTY) => t.id)}>
-                      <For each={terminal.all()}>
-                        {(pty) => (
-                          <SortableTerminalTab
-                            terminal={pty}
-                            onClose={() => {
-                              view().terminal.close()
-                              setUi("autoCreated", false)
-                            }}
-                          />
-                        )}
-                      </For>
-                    </SortableProvider>
-                    <div class="h-full flex items-center justify-center">
-                      <TooltipKeybind
-                        title={language.t("command.terminal.new")}
-                        keybind={command.keybind("terminal.new")}
-                        class="flex items-center"
-                      >
-                        <IconButton
-                          icon="plus-small"
-                          variant="ghost"
-                          iconSize="large"
-                          onClick={terminal.new}
-                          aria-label={language.t("command.terminal.new")}
-                        />
-                      </TooltipKeybind>
-                    </div>
-                  </Tabs.List>
-                </Tabs>
-                <div class="flex-1 min-h-0 relative">
-                  <For each={terminal.all()}>
-                    {(pty) => (
-                      <div
-                        id={`terminal-wrapper-${pty.id}`}
-                        class="absolute inset-0"
-                        style={{
-                          display: terminal.active() === pty.id ? "block" : "none",
-                        }}
-                      >
-                        <Show when={pty.id} keyed>
-                          <Terminal
-                            pty={pty}
-                            onCleanup={terminal.update}
-                            onConnectError={() => terminal.clone(pty.id)}
-                          />
-                        </Show>
-                      </div>
-                    )}
-                  </For>
-                </div>
-              </div>
-              <DragOverlay>
-                <Show when={store.activeTerminalDraggable}>
-                  {(draggedId) => {
-                    const pty = createMemo(() => terminal.all().find((t: LocalPTY) => t.id === draggedId()))
-                    return (
-                      <Show when={pty()}>
-                        {(t) => (
-                          <div class="relative p-1 h-10 flex items-center bg-background-stronger text-14-regular">
-                            {(() => {
-                              const title = t().title
-                              const number = t().titleNumber
-                              const match = title.match(/^Terminal (\d+)$/)
-                              const parsed = match ? Number(match[1]) : undefined
-                              const isDefaultTitle =
-                                Number.isFinite(number) && number > 0 && Number.isFinite(parsed) && parsed === number
-
-                              if (title && !isDefaultTitle) return title
-                              if (Number.isFinite(number) && number > 0)
-                                return language.t("terminal.title.numbered", { number })
-                              if (title) return title
-                              return language.t("terminal.title")
-                            })()}
-                          </div>
-                        )}
-                      </Show>
-                    )
-                  }}
-                </Show>
-              </DragOverlay>
-            </DragDropProvider>
-          </Show>
-        </div>
+        <SessionTerminalPanel
+          onClose={() => {
+            view().terminal.close()
+            setUi("autoCreated", false)
+          }}
+          handoffTerminals={handoff.terminals}
+        />
       </Show>
     </div>
   )

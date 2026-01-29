@@ -29,6 +29,7 @@ import {
 } from "@stud/sdk/v2"
 import { createStore } from "solid-js/store"
 import { useData } from "../context"
+import type { PickerRequest, PickerSelection } from "../context/data"
 import { useDiffComponent } from "../context/diff"
 import { useCodeComponent } from "../context/code"
 import { useDialog } from "../context/dialog"
@@ -550,8 +551,16 @@ PART_MAPPING["tool"] = function ToolPartDisplay(props) {
     return next
   })
 
+  const pickerRequest = createMemo(() => {
+    const next = data.store.picker?.[props.message.sessionID]?.[0]
+    if (!next || !next.tool) return undefined
+    if (next.tool!.callID !== part.callID) return undefined
+    return next
+  })
+
   const [showPermission, setShowPermission] = createSignal(false)
   const [showQuestion, setShowQuestion] = createSignal(false)
+  const [showPicker, setShowPicker] = createSignal(false)
 
   createEffect(() => {
     const perm = permission()
@@ -573,9 +582,19 @@ PART_MAPPING["tool"] = function ToolPartDisplay(props) {
     }
   })
 
+  createEffect(() => {
+    const picker = pickerRequest()
+    if (picker) {
+      const timeout = setTimeout(() => setShowPicker(true), 50)
+      onCleanup(() => clearTimeout(timeout))
+    } else {
+      setShowPicker(false)
+    }
+  })
+
   const [forceOpen, setForceOpen] = createSignal(false)
   createEffect(() => {
-    if (permission() || questionRequest()) setForceOpen(true)
+    if (permission() || questionRequest() || pickerRequest()) setForceOpen(true)
   })
 
   const respond = (response: "once" | "always" | "reject") => {
@@ -603,7 +622,12 @@ PART_MAPPING["tool"] = function ToolPartDisplay(props) {
   const render = ToolRegistry.render(part.tool) ?? GenericTool
 
   return (
-    <div data-component="tool-part-wrapper" data-permission={showPermission()} data-question={showQuestion()}>
+    <div
+      data-component="tool-part-wrapper"
+      data-permission={showPermission()}
+      data-question={showQuestion()}
+      data-picker={showPicker()}
+    >
       <Switch>
         <Match when={part.state.status === "error" && part.state.error}>
           {(error) => {
@@ -640,7 +664,7 @@ PART_MAPPING["tool"] = function ToolPartDisplay(props) {
             status={part.state.status}
             hideDetails={props.hideDetails}
             forceOpen={forceOpen()}
-            locked={showPermission() || showQuestion()}
+            locked={showPermission() || showQuestion() || showPicker()}
             defaultOpen={props.defaultOpen}
           />
         </Match>
@@ -661,6 +685,7 @@ PART_MAPPING["tool"] = function ToolPartDisplay(props) {
         </div>
       </Show>
       <Show when={showQuestion() && questionRequest()}>{(request) => <QuestionPrompt request={request()} />}</Show>
+      <Show when={showPicker() && pickerRequest()}>{(request) => <PickerPrompt request={request()} />}</Show>
     </div>
   )
 }
@@ -1665,6 +1690,114 @@ function QuestionPrompt(props: { request: QuestionRequest }) {
             </Button>
           </Show>
         </Show>
+      </div>
+    </div>
+  )
+}
+
+function PickerPrompt(props: { request: PickerRequest }) {
+  const data = useData()
+  const i18n = useI18n()
+  const items = createMemo(() => props.request.items)
+  const recommended = createMemo(() => props.request.recommended ?? [])
+
+  const [selections, setSelections] = createSignal<PickerSelection>([])
+
+  function toggle(id: string | number) {
+    const current = selections()
+    const index = current.indexOf(id)
+    if (index === -1) {
+      setSelections([...current, id])
+    } else {
+      const next = [...current]
+      next.splice(index, 1)
+      setSelections(next)
+    }
+  }
+
+  function submit() {
+    data.replyToPicker?.({
+      requestID: props.request.id,
+      selections: selections(),
+    })
+  }
+
+  function quickAdd() {
+    // Use recommended items or select all if no recommendations
+    const toSelect = recommended().length > 0 ? recommended() : items().map((item) => item.id)
+    data.replyToPicker?.({
+      requestID: props.request.id,
+      selections: toSelect,
+    })
+  }
+
+  function reject() {
+    data.rejectPicker?.({
+      requestID: props.request.id,
+    })
+  }
+
+  function isSelected(id: string | number) {
+    return selections().includes(id)
+  }
+
+  function isRecommended(id: string | number) {
+    return recommended().includes(id)
+  }
+
+  return (
+    <div data-component="picker-prompt">
+      <div data-slot="picker-header">
+        <span data-slot="picker-title">{props.request.title}</span>
+        <span data-slot="picker-count">
+          {selections().length} / {items().length} selected
+        </span>
+      </div>
+
+      <div data-slot="picker-items">
+        <For each={items()}>
+          {(item) => (
+            <button
+              type="button"
+              data-slot="picker-item"
+              data-selected={isSelected(item.id)}
+              data-recommended={isRecommended(item.id)}
+              onClick={() => toggle(item.id)}
+            >
+              <Show when={item.thumbnailUrl}>
+                <img data-slot="picker-item-thumbnail" src={item.thumbnailUrl} alt={item.name} loading="lazy" />
+              </Show>
+              <div data-slot="picker-item-info">
+                <div data-slot="picker-item-name-row">
+                  <span data-slot="picker-item-name">{item.name}</span>
+                  <Show when={isRecommended(item.id)}>
+                    <span data-slot="picker-item-recommended">★</span>
+                  </Show>
+                </div>
+                <Show when={item.description}>
+                  <span data-slot="picker-item-description">{item.description}</span>
+                </Show>
+              </div>
+              <div data-slot="picker-item-checkbox">
+                <Show when={isSelected(item.id)}>
+                  <Icon name="check-small" size="small" />
+                </Show>
+              </div>
+            </button>
+          )}
+        </For>
+      </div>
+
+      <div data-slot="picker-actions">
+        <Button variant="ghost" size="small" onClick={reject}>
+          {i18n.t("ui.common.dismiss")}
+        </Button>
+        <Button variant="secondary" size="small" onClick={quickAdd}>
+          Quick Add {recommended().length > 0 ? `(${recommended().length})` : "(All)"}
+        </Button>
+        <Button variant="primary" size="small" onClick={submit} disabled={selections().length === 0}>
+          {i18n.t("ui.common.submit")} ({selections().length})
+        </Button>
       </div>
     </div>
   )

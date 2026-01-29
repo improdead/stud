@@ -454,7 +454,8 @@
   width: 100%;
 
   &[data-permission="true"],
-  &[data-question="true"] {
+  &[data-question="true"],
+  &[data-picker="true"] {
     position: sticky;
     top: calc(2px + var(--sticky-header-height, 40px));
     bottom: 0px;
@@ -511,7 +512,8 @@
     }
   }
 
-  &[data-question="true"] {
+  &[data-question="true"],
+  &[data-picker="true"] {
     background: var(--background-base);
     border: 1px solid var(--border-weak-base);
   }
@@ -807,6 +809,160 @@
 
   &::-webkit-scrollbar {
     display: none;
+  }
+}
+
+/* Picker Prompt - Multi-select grid for asset selection */
+[data-component="picker-prompt"] {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  background-color: var(--surface-inset-base);
+  border-radius: 0 0 6px 6px;
+
+  [data-slot="picker-header"] {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  [data-slot="picker-title"] {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-base);
+  }
+
+  [data-slot="picker-count"] {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-small);
+    color: var(--text-weak);
+  }
+
+  [data-slot="picker-items"] {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 8px;
+    max-height: 400px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    padding: 4px;
+  }
+
+  [data-slot="picker-item"] {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0;
+    background-color: var(--surface-base);
+    border: 1px solid var(--border-weaker-base);
+    border-radius: 6px;
+    cursor: pointer;
+    text-align: left;
+    transition:
+      background-color 0.15s,
+      border-color 0.15s,
+      transform 0.1s;
+    overflow: hidden;
+    position: relative;
+
+    &:hover {
+      background-color: var(--surface-base-hover);
+      border-color: var(--border-default);
+    }
+
+    &[data-selected="true"] {
+      border-color: var(--border-brand-base);
+      background-color: var(--surface-brand-weak);
+
+      [data-slot="picker-item-checkbox"] {
+        color: var(--icon-brand-base);
+      }
+    }
+
+    &[data-recommended="true"]:not([data-selected="true"]) {
+      border-color: var(--border-success-base);
+    }
+  }
+
+  [data-slot="picker-item-thumbnail"] {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    background-color: var(--surface-inset-base);
+    border-bottom: 1px solid var(--border-weaker-base);
+  }
+
+  [data-slot="picker-item-info"] {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px;
+    flex-grow: 1;
+    min-height: 48px;
+  }
+
+  [data-slot="picker-item-name-row"] {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  [data-slot="picker-item-name"] {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-medium);
+    line-height: var(--line-height-normal);
+    color: var(--text-base);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
+    flex: 1;
+  }
+
+  [data-slot="picker-item-recommended"] {
+    color: var(--text-success-base);
+    font-size: 10px;
+  }
+
+  [data-slot="picker-item-description"] {
+    font-family: var(--font-family-sans);
+    font-size: 11px;
+    color: var(--text-weak);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  [data-slot="picker-item-checkbox"] {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--surface-raised-base);
+    border-radius: 4px;
+    color: var(--icon-weak);
+
+    [data-component="icon"] {
+      width: 14px;
+      height: 14px;
+    }
+  }
+
+  [data-slot="picker-actions"] {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: flex-end;
   }
 }
 

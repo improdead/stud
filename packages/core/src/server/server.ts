@@ -37,6 +37,7 @@ import { websocket } from "hono/bun"
 import { HTTPException } from "hono/http-exception"
 import { errors } from "./error"
 import { QuestionRoutes } from "./routes/question"
+import { PickerRoutes } from "./routes/picker"
 import { PermissionRoutes } from "./routes/permission"
 import { GlobalRoutes } from "./routes/global"
 import { RobloxRoutes } from "./routes/roblox"
@@ -164,6 +165,7 @@ export namespace Server {
         .route("/session", SessionRoutes())
         .route("/permission", PermissionRoutes())
         .route("/question", QuestionRoutes())
+        .route("/picker", PickerRoutes())
         .route("/provider", ProviderRoutes())
         .route("/", FileRoutes())
         .route("/mcp", McpRoutes())

@@ -11,6 +11,30 @@ import type {
 import { createSimpleContext } from "./helper"
 import { PreloadMultiFileDiffResult } from "@pierre/diffs/ssr"
 
+// Picker types - these match the SDK generated types
+export type PickerItem = {
+  id: string | number
+  name: string
+  thumbnailUrl?: string
+  description?: string
+  metadata?: Record<string, any>
+}
+
+export type PickerRequest = {
+  id: string
+  sessionID: string
+  title: string
+  items: PickerItem[]
+  recommended?: (string | number)[]
+  multiple?: boolean
+  tool?: {
+    messageID: string
+    callID: string
+  }
+}
+
+export type PickerSelection = (string | number)[]
+
 type Data = {
   session: Session[]
   session_status: {
@@ -27,6 +51,9 @@ type Data = {
   }
   question?: {
     [sessionID: string]: QuestionRequest[]
+  }
+  picker?: {
+    [sessionID: string]: PickerRequest[]
   }
   message: {
     [sessionID: string]: Message[]
@@ -46,6 +73,10 @@ export type QuestionReplyFn = (input: { requestID: string; answers: QuestionAnsw
 
 export type QuestionRejectFn = (input: { requestID: string }) => void
 
+export type PickerReplyFn = (input: { requestID: string; selections: PickerSelection }) => void
+
+export type PickerRejectFn = (input: { requestID: string }) => void
+
 export type NavigateToSessionFn = (sessionID: string) => void
 
 export type SendMessageFn = (text: string) => void
@@ -58,6 +89,8 @@ export const { use: useData, provider: DataProvider } = createSimpleContext({
     onPermissionRespond?: PermissionRespondFn
     onQuestionReply?: QuestionReplyFn
     onQuestionReject?: QuestionRejectFn
+    onPickerReply?: PickerReplyFn
+    onPickerReject?: PickerRejectFn
     onNavigateToSession?: NavigateToSessionFn
     onSendMessage?: SendMessageFn
   }) => {
@@ -71,6 +104,8 @@ export const { use: useData, provider: DataProvider } = createSimpleContext({
       respondToPermission: props.onPermissionRespond,
       replyToQuestion: props.onQuestionReply,
       rejectQuestion: props.onQuestionReject,
+      replyToPicker: props.onPickerReply,
+      rejectPicker: props.onPickerReject,
       navigateToSession: props.onNavigateToSession,
       sendMessage: props.onSendMessage,
     }

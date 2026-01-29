@@ -5,6 +5,7 @@ import { SyncProvider, useSync } from "@/context/sync"
 import { LocalProvider } from "@/context/local"
 
 import { DataProvider } from "@stud/ui/context"
+import type { PickerSelection } from "@stud/ui/context"
 import { iife } from "@stud/util/iife"
 import type { QuestionAnswer } from "@stud/sdk/v2"
 import { decode64 } from "@/utils/base64"
@@ -48,6 +49,20 @@ export default function Layout(props: ParentProps) {
 
             const rejectQuestion = (input: { requestID: string }) => sdk.client.question.reject(input)
 
+            // Picker handlers - use SDK methods
+            const replyToPicker = async (input: { requestID: string; selections: PickerSelection }) => {
+              await sdk.client.picker.reply({
+                requestID: input.requestID,
+                selections: input.selections,
+              })
+            }
+
+            const rejectPicker = async (input: { requestID: string }) => {
+              await sdk.client.picker.reject({
+                requestID: input.requestID,
+              })
+            }
+
             const navigateToSession = (sessionID: string) => {
               navigate(`/${params.dir}/session/${sessionID}`)
             }
@@ -63,6 +78,8 @@ export default function Layout(props: ParentProps) {
                 onPermissionRespond={respond}
                 onQuestionReply={replyToQuestion}
                 onQuestionReject={rejectQuestion}
+                onPickerReply={replyToPicker}
+                onPickerReject={rejectPicker}
                 onNavigateToSession={navigateToSession}
                 onSendMessage={sendMessage}
               >

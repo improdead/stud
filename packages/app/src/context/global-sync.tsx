@@ -407,8 +407,12 @@ function createGlobalSync() {
         // a request is in-flight still get the expanded result.
         const limit = store.limit
 
+        // Preserve child sessions and any root sessions that were added via events
+        // during the API fetch (race condition protection)
         const children = store.session.filter((s) => !!s.parentID)
-        const sessions = trimSessions([...nonArchived, ...children], { limit, permission: store.permission })
+        const existingRootIds = new Set(nonArchived.map((s) => s.id))
+        const eventAddedRoots = store.session.filter((s) => !s.parentID && !existingRootIds.has(s.id))
+        const sessions = trimSessions([...nonArchived, ...eventAddedRoots, ...children], { limit, permission: store.permission })
 
         // Store total session count (used for "load more" pagination)
         setStore("sessionTotal", nonArchived.length)
@@ -637,10 +641,12 @@ function createGlobalSync() {
           setStore("session", result.index, reconcile(info))
           break
         }
-        const next = store.session.slice()
-        next.splice(result.index, 0, info)
-        const trimmed = trimSessions(next, { limit: store.limit, permission: store.permission })
-        setStore("session", reconcile(trimmed, { key: "id" }))
+        setStore(
+          "session",
+          produce((draft) => {
+            draft.splice(result.index, 0, info)
+          }),
+        )
         if (!info.parentID) {
           setStore("sessionTotal", (value) => value + 1)
         }
@@ -669,10 +675,12 @@ function createGlobalSync() {
           setStore("session", result.index, reconcile(info))
           break
         }
-        const next = store.session.slice()
-        next.splice(result.index, 0, info)
-        const trimmed = trimSessions(next, { limit: store.limit, permission: store.permission })
-        setStore("session", reconcile(trimmed, { key: "id" }))
+        setStore(
+          "session",
+          produce((draft) => {
+            draft.splice(result.index, 0, info)
+          }),
+        )
         break
       }
       case "session.deleted": {

@@ -76,10 +76,10 @@
     white-space: pre-wrap;
     word-break: break-word;
     overflow: hidden;
-    background: var(--surface-weak);
+    background: var(--surface-raised-base);
     border: 1px solid var(--border-weak-base);
-    padding: 8px 12px;
-    border-radius: 4px;
+    padding: 12px 14px;
+    border-radius: var(--radius-lg);
 
     [data-highlight="file"] {
       color: var(--syntax-property);
@@ -116,7 +116,7 @@
 
   [data-slot="text-part-body"] {
     position: relative;
-    margin-top: 32px;
+    margin-top: 20px;
   }
 
   [data-slot="text-part-copy-wrapper"] {

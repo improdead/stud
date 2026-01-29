@@ -15,6 +15,8 @@ import {
 } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useServer } from "@/context/server"
+import { useInstance } from "@/context/instance"
+import { studioRequest } from "@/utils/studio"
 import { usePlatform } from "@/context/platform"
 import { base64Encode } from "@stud/util/encode"
 
@@ -80,11 +82,19 @@ interface InstanceTreeNodeProps {
 }
 
 function InstanceTreeNode(props: InstanceTreeNodeProps) {
+  const instance = useInstance()
   const [expanded, setExpanded] = createSignal(props.level < 2)
   const hasChildren = () => props.node.children && props.node.children.length > 0
   const isClickable = () => !!props.node.filePath
+  const isSelected = () => instance.selected()?.path === props.node.path
 
   const handleClick = () => {
+    instance.setSelected({
+      path: props.node.path,
+      name: props.node.name,
+      className: props.node.className,
+    })
+    studioRequest("/selection/set", { paths: [props.node.path] })
     if (props.node.filePath && props.onFileClick) {
       props.onFileClick(props.node.filePath)
     }
@@ -103,6 +113,7 @@ function InstanceTreeNode(props: InstanceTreeNodeProps) {
             style={{ "padding-left": paddingLeft() }}
             onClick={handleClick}
             disabled={!isClickable()}
+            classList={{ "bg-surface-raised-base": isSelected() }}
           >
             <div class="size-4 flex items-center justify-center" />
             <InstanceIcon className={props.node.className} class="size-4 shrink-0" />
@@ -118,6 +129,8 @@ function InstanceTreeNode(props: InstanceTreeNodeProps) {
               type="button"
               class="w-full min-w-0 h-6 flex items-center justify-start gap-x-1.5 rounded-md px-1.5 py-0 text-left hover:bg-surface-raised-base-hover active:bg-surface-base-active transition-colors cursor-pointer"
               style={{ "padding-left": paddingLeft() }}
+              onClick={handleClick}
+              classList={{ "bg-surface-raised-base": isSelected() }}
             >
               <div class="size-4 flex items-center justify-center text-icon-weak">
                 <Icon name={expanded() ? "chevron-down" : "chevron-right"} size="small" />

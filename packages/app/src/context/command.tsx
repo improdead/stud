@@ -3,13 +3,14 @@ import { createStore } from "solid-js/store"
 import { createSimpleContext } from "@stud/ui/context"
 import { useDialog } from "@stud/ui/context/dialog"
 import { useLanguage } from "@/context/language"
+import { DialogCommandPalette } from "@/components/dialog-command-palette"
 import { useSettings } from "@/context/settings"
 import { Persist, persisted } from "@/utils/persist"
 
 const IS_MAC = typeof navigator === "object" && /(Mac|iPod|iPhone|iPad)/.test(navigator.platform)
 
 const PALETTE_ID = "command.palette"
-const DEFAULT_PALETTE_KEYBIND = "mod+shift+p"
+const DEFAULT_PALETTE_KEYBIND = "mod+k"
 const SUGGESTED_PREFIX = "suggested."
 
 function actionId(id: string) {
@@ -268,7 +269,7 @@ export const { use: useCommand, provider: CommandProvider } = createSimpleContex
     }
 
     const showPalette = () => {
-      run("file.open", "palette")
+      dialog.show(() => <DialogCommandPalette />)
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {

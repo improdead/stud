@@ -62,6 +62,7 @@ import { usePermission } from "@/context/permission"
 import { decode64 } from "@/utils/base64"
 import { showToast } from "@stud/ui/toast"
 import { onSendMessage } from "@/utils/events"
+import { ContextToolbar } from "@/components/context-toolbar"
 import {
   SessionHeader,
   SessionContextTab,
@@ -72,6 +73,7 @@ import {
   SessionLeftSidebar,
   SessionPlanView,
   SessionTerminalPanel,
+  SessionInspectorTab,
 } from "@/components/session"
 import { navMark, navParams } from "@/utils/perf"
 import { same } from "@/utils/same"
@@ -791,6 +793,39 @@ export default function Page() {
       onSelect: () => local.agent.move(-1),
     },
     {
+      id: "roblox.quick.search",
+      title: "Search toolbox",
+      description: "Find models, audio, and assets",
+      category: language.t("command.category.workspace"),
+      onSelect: () => {
+        const text = "Search the Roblox toolbox for "
+        prompt.set([{ type: "text", content: text, start: 0, end: text.length }], text.length)
+        inputRef?.focus()
+      },
+    },
+    {
+      id: "roblox.quick.insert",
+      title: "Insert model",
+      description: "Insert a model into Workspace",
+      category: language.t("command.category.workspace"),
+      onSelect: () => {
+        const text = "Insert a model into game.Workspace"
+        prompt.set([{ type: "text", content: text, start: 0, end: text.length }], text.length)
+        inputRef?.focus()
+      },
+    },
+    {
+      id: "roblox.quick.script",
+      title: "Add script",
+      description: "Create a script for the selected instance",
+      category: language.t("command.category.workspace"),
+      onSelect: () => {
+        const text = "Add a script to the selected instance"
+        prompt.set([{ type: "text", content: text, start: 0, end: text.length }], text.length)
+        inputRef?.focus()
+      },
+    },
+    {
       id: "model.variant.cycle",
       title: language.t("command.model.variant.cycle"),
       description: language.t("command.model.variant.cycle.description"),
@@ -1076,12 +1111,18 @@ export default function Page() {
   const openedTabs = createMemo(() =>
     tabs()
       .all()
-      .filter((tab) => tab !== "context"),
+      .filter((tab) => tab !== "context" && tab !== "inspector"),
   )
 
   const mobileReview = createMemo(() => !isDesktop() && view().reviewPanel.opened() && store.mobileTab === "review")
 
   const showTabs = createMemo(() => view().reviewPanel.opened())
+
+  createEffect(() => {
+    if (!showTabs()) return
+    if (tabs().active()) return
+    tabs().open("inspector")
+  })
 
   const [tree, setTree] = createStore({
     fileTreeTab: "changes" as "changes" | "all",
@@ -1838,10 +1879,10 @@ export default function Page() {
                           <div
                             ref={autoScroll.contentRef}
                             role="log"
-                            class="flex flex-col gap-32 items-start justify-start pb-[calc(var(--prompt-height,8rem)+64px)] md:pb-[calc(var(--prompt-height,10rem)+64px)] transition-[margin]"
+                            class="flex flex-col gap-16 items-start justify-start pb-[calc(var(--prompt-height,8rem)+64px)] md:pb-[calc(var(--prompt-height,10rem)+64px)] transition-[margin]"
                             classList={{
                               "w-full": true,
-                              "md:max-w-200 md:mx-auto": !showTabs(),
+                              "md:max-w-[720px] md:mx-auto": true,
                               "mt-0.5": !showTabs(),
                               "mt-0": showTabs(),
                             }}
@@ -1894,7 +1935,7 @@ export default function Page() {
                                     data-message-id={message.id}
                                     classList={{
                                       "min-w-0 w-full max-w-full": true,
-                                      "md:max-w-200": !showTabs(),
+                                      "md:max-w-[720px]": true,
                                     }}
                                   >
                                     <SessionTurn
@@ -1947,14 +1988,17 @@ export default function Page() {
           {/* Prompt input */}
           <div
             ref={(el) => (promptDock = el)}
-            class="absolute inset-x-0 bottom-0 pt-12 pb-4 flex flex-col justify-center items-center z-50 px-4 md:px-0 bg-gradient-to-t from-background-stronger via-background-stronger to-transparent pointer-events-none"
+            class="absolute inset-x-0 bottom-0 pt-10 pb-6 flex flex-col justify-end items-end z-50 px-6 bg-gradient-to-t from-background-stronger via-background-stronger to-transparent pointer-events-none"
           >
             <div
               classList={{
-                "w-full px-4 pointer-events-auto": true,
-                "md:max-w-200": !showTabs(),
+                "w-full max-w-[560px] pointer-events-auto": true,
+                "md:max-w-[640px]": !showTabs(),
               }}
             >
+              <div class="mb-3 flex justify-end">
+                <ContextToolbar />
+              </div>
               <Show when={request()} keyed>
                 {(perm) => (
                   <div data-component="tool-part-wrapper" data-permission="true" class="mb-3">
@@ -2041,7 +2085,7 @@ export default function Page() {
           <aside
             id="review-panel"
             aria-label={language.t("session.panel.reviewAndFiles")}
-            class="relative flex-1 min-w-0 h-full border-l border-border-weak-base flex"
+            class="relative w-[360px] max-w-[420px] min-w-0 h-full border-l border-border-weak-base flex flex-shrink-0"
           >
             <div class="flex-1 min-w-0 h-full">
               <Show
@@ -2075,6 +2119,12 @@ export default function Page() {
                               </div>
                             </Tabs.Trigger>
                           </Show>
+                          <Tabs.Trigger value="inspector" hideCloseButton>
+                            <div class="flex items-center gap-2">
+                              <Icon name="sliders" size="small" />
+                              <div>Inspector</div>
+                            </div>
+                          </Tabs.Trigger>
                           <Show when={!layout.fileTree.opened() && contextOpen()}>
                             <Tabs.Trigger
                               value="context"
@@ -2123,6 +2173,9 @@ export default function Page() {
                         </Tabs.List>
                       </div>
                       <Show when={!layout.fileTree.opened()}>
+                        <Tabs.Content value="inspector" class="flex flex-col h-full overflow-hidden contain-strict">
+                          <SessionInspectorTab />
+                        </Tabs.Content>
                         <Tabs.Content value="review" class="flex flex-col h-full overflow-hidden contain-strict">
                           <Show when={activeTab() === "review"}>
                             <div class="relative pt-2 flex-1 min-h-0 overflow-hidden">

@@ -1720,11 +1720,11 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
         onSubmit={handleSubmit}
         classList={{
           "group/prompt-input": true,
-          "bg-background-base relative": true,
+          "bg-surface-raised-stronger-non-alpha relative": true,
           "rounded-xl overflow-clip": true,
           "border border-border-weak-base": true,
           "focus-within:border-border-base": true,
-          "transition-colors duration-200": true,
+          "shadow-lg transition-colors duration-200": true,
           "border-icon-info-active border-dashed!": store.dragging,
           [props.class ?? ""]: !!props.class,
         }}
@@ -1738,7 +1738,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
           </div>
         </Show>
         <Show when={prompt.context.items().length > 0}>
-          <div class="flex flex-nowrap items-center gap-1.5 px-3 py-2 overflow-x-auto no-scrollbar border-b border-border-weak-base">
+          <div class="flex flex-nowrap items-center gap-2 px-3 py-2.5 overflow-x-auto no-scrollbar border-b border-border-weak-base bg-surface-inset-base/60">
             <For each={prompt.context.items()}>
               {(item) => {
                 const active = () => {
@@ -1760,7 +1760,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                   >
                     <div
                       classList={{
-                        "group shrink-0 flex items-center gap-1.5 rounded-full px-2.5 py-1 text-12-regular transition-colors": true,
+                        "group shrink-0 flex items-center gap-2 rounded-full px-3 py-1.5 text-12-regular transition-colors": true,
                         "bg-surface-raised-base border border-border-weak-base": !active(),
                         "cursor-pointer hover:bg-surface-raised-strong hover:border-border-base":
                           !!item.commentID && !active(),
@@ -1770,9 +1770,9 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                         openComment(item)
                       }}
                     >
-                      <FileIcon node={{ path: item.path, type: "file" }} class="shrink-0 size-3.5" />
-                      <span class="text-text-strong whitespace-nowrap max-w-[120px] truncate">
-                        {getFilenameTruncated(item.path, 14)}
+                      <FileIcon node={{ path: item.path, type: "file" }} class="shrink-0 size-4" />
+                      <span class="text-text-strong whitespace-nowrap max-w-[160px] truncate">
+                        {getFilenameTruncated(item.path, 16)}
                       </span>
                       <Show when={item.selection}>
                         {(sel) => (

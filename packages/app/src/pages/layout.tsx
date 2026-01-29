@@ -936,6 +936,12 @@ export default function Layout(props: ParentProps) {
   command.register(() => {
     const commands: CommandOption[] = [
       {
+        id: "command.palette",
+        title: language.t("command.palette"),
+        category: language.t("command.category.view"),
+        onSelect: () => command.show(),
+      },
+      {
         id: "sidebar.toggle",
         title: language.t("command.sidebar.toggle"),
         category: language.t("command.category.view"),

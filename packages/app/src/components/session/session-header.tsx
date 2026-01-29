@@ -33,7 +33,7 @@ export function SessionHeader() {
     if (current) return current.name || getFilename(current.worktree)
     return getFilename(projectDirectory())
   })
-  const hotkey = createMemo(() => command.keybind("file.open"))
+  const hotkey = createMemo(() => command.keybind("command.palette"))
 
   const currentSession = createMemo(() => sync.data.session.find((s) => s.id === params.id))
   const showReview = createMemo(() => !!currentSession())
@@ -51,7 +51,7 @@ export function SessionHeader() {
             <button
               type="button"
               class="hidden md:flex w-[320px] p-1 pl-1.5 items-center gap-2 justify-between rounded-md border border-border-weak-base bg-surface-raised-base transition-colors cursor-default hover:bg-surface-raised-base-hover focus-visible:bg-surface-raised-base-hover active:bg-surface-raised-base-active"
-              onClick={() => command.trigger("file.open")}
+              onClick={() => command.show()}
               aria-label={language.t("session.header.searchFiles")}
             >
               <div class="flex min-w-0 flex-1 items-center gap-2 overflow-visible">

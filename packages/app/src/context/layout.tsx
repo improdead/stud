@@ -714,7 +714,7 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
               return
             }
 
-            if (tab === "context") {
+            if (tab === "context" || tab === "inspector") {
               const all = [tab, ...current.all.filter((x) => x !== tab)]
               if (!store.sessionTabs[session]) {
                 setStore("sessionTabs", session, { all, active: tab })

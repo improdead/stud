@@ -917,6 +917,21 @@ handlers["/selection/get"] = function()
 	return results
 end
 
+handlers["/selection/set"] = function(data)
+	local paths = data.paths or {}
+	local selected = {}
+	
+	for _, path in ipairs(paths) do
+		local instance = findInstanceByPath(path)
+		if instance then
+			table.insert(selected, instance)
+		end
+	end
+	
+	Selection:Set(selected)
+	return { count = #selected }
+end
+
 handlers["/code/run"] = function(data)
 	local output = {}
 	

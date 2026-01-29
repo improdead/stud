@@ -666,6 +666,14 @@ export function SessionTurn(
                     </div>
                     <Show when={!working() && (response() || hasDiffs())}>
                       <div data-slot="session-turn-summary-section">
+                        <Show when={hasDiffs()}>
+                          <div data-slot="session-turn-edit-summary">
+                            <Icon name="edit-small-2" size="small" />
+                            <span>
+                              {messageDiffs().length} file change{messageDiffs().length === 1 ? "" : "s"}
+                            </span>
+                          </div>
+                        </Show>
                         <div data-slot="session-turn-summary-header">
                           <h2 data-slot="session-turn-summary-title">{i18n.t("ui.sessionTurn.summary.response")}</h2>
                           <div data-slot="session-turn-response">

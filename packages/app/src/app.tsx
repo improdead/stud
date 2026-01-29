@@ -24,6 +24,7 @@ import { NotificationProvider } from "@/context/notification"
 import { ModelsProvider } from "@/context/models"
 import { DialogProvider } from "@stud/ui/context/dialog"
 import { CommandProvider } from "@/context/command"
+import { InstanceProvider } from "@/context/instance"
 import { LanguageProvider, useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
 import { HighlightsProvider } from "@/context/highlights"
@@ -118,9 +119,11 @@ export function AppInterface(props: { defaultUrl?: string }) {
                       <NotificationProvider>
                         <ModelsProvider>
                           <CommandProvider>
-                            <HighlightsProvider>
-                              <Layout>{props.children}</Layout>
-                            </HighlightsProvider>
+                            <InstanceProvider>
+                              <HighlightsProvider>
+                                <Layout>{props.children}</Layout>
+                              </HighlightsProvider>
+                            </InstanceProvider>
                           </CommandProvider>
                         </ModelsProvider>
                       </NotificationProvider>

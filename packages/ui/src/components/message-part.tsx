@@ -36,6 +36,7 @@ import { useDialog } from "../context/dialog"
 import { useI18n } from "../context/i18n"
 import { BasicTool } from "./basic-tool"
 import { GenericTool } from "./basic-tool"
+import { ActionCard } from "./action-card"
 import { Button } from "./button"
 import { Card } from "./card"
 import { Icon } from "./icon"
@@ -156,6 +157,22 @@ function relativizeProjectPaths(text: string, directory?: string) {
 function getDirectory(path: string | undefined) {
   const data = useData()
   return relativizeProjectPaths(_getDirectory(path), data.directory)
+}
+
+function getActionStatus(status?: string): "success" | "pending" | "error" | "info" {
+  if (status === "running") return "pending"
+  if (status === "error") return "error"
+  if (status === "success") return "success"
+  if (status === "complete") return "success"
+  return "info"
+}
+
+function getStatusLabel(status?: string) {
+  if (status === "running") return "Working"
+  if (status === "success") return "Done"
+  if (status === "complete") return "Done"
+  if (status === "error") return "Failed"
+  return undefined
 }
 
 export function getSessionToolParts(store: ReturnType<typeof useData>["store"], sessionId: string): ToolPart[] {
@@ -1038,21 +1055,23 @@ ToolRegistry.register({
   name: "bash",
   render(props) {
     const i18n = useI18n()
+    const status = () => getActionStatus(props.status)
+    const label = () => getStatusLabel(props.status)
     return (
-      <BasicTool
-        {...props}
+      <ActionCard
         icon="console"
-        trigger={{
-          title: i18n.t("ui.tool.shell"),
-          subtitle: props.input.description,
-        }}
+        title={i18n.t("ui.tool.shell")}
+        subtitle={props.input.description}
+        status={status()}
+        meta={<Show when={label()}>{(text) => <span data-slot="action-card-status">{text()}</span>}</Show>}
+        defaultOpen={true}
       >
         <div data-component="tool-output" data-scrollable>
           <Markdown
             text={`\`\`\`command\n$ ${props.input.command ?? props.metadata.command ?? ""}${props.output || props.metadata.output ? "\n\n" + stripAnsi(props.output || props.metadata.output) : ""}\n\`\`\``}
           />
         </div>
-      </BasicTool>
+      </ActionCard>
     )
   },
 })
@@ -1060,39 +1079,44 @@ ToolRegistry.register({
 ToolRegistry.register({
   name: "edit",
   render(props) {
+    const data = useData()
     const i18n = useI18n()
     const diffComponent = useDiffComponent()
     const diagnostics = createMemo(() => getDiagnostics(props.metadata.diagnostics, props.input.filePath))
     const filename = () => getFilename(props.input.filePath ?? "")
+    const [expanded, setExpanded] = createSignal(false)
+    const toggleLabel = () => (expanded() ? "Collapse" : "Expand")
+    const undo = () => {
+      if (!data.sendMessage) return
+      data.sendMessage("/undo")
+    }
     return (
-      <BasicTool
-        {...props}
+      <ActionCard
         icon="code-lines"
-        trigger={
-          <div data-component="edit-trigger">
-            <div data-slot="message-part-title-area">
-              <div data-slot="message-part-title">
-                <span data-slot="message-part-title-text">{i18n.t("ui.messagePart.title.edit")}</span>
-                <span data-slot="message-part-title-filename">{filename()}</span>
-              </div>
-              <Show when={props.input.filePath?.includes("/")}>
-                <div data-slot="message-part-path">
-                  <span data-slot="message-part-directory">{getDirectory(props.input.filePath!)}</span>
-                </div>
-              </Show>
-            </div>
-            <div data-slot="message-part-actions">
-              <Show when={props.metadata.filediff}>
-                <DiffChanges changes={props.metadata.filediff} />
-              </Show>
-            </div>
-          </div>
+        title={i18n.t("ui.messagePart.title.edit")}
+        subtitle={filename()}
+        meta={
+          <Show when={props.metadata.filediff}>
+            <DiffChanges changes={props.metadata.filediff} />
+          </Show>
         }
+        actions={
+          <>
+            <Button variant="ghost" size="small" onClick={() => setExpanded(!expanded())}>
+              {toggleLabel()}
+            </Button>
+            <Button variant="ghost" size="small" icon="arrow-left" onClick={undo}>
+              Undo
+            </Button>
+          </>
+        }
+        defaultOpen={true}
       >
         <Show when={props.metadata.filediff?.path || props.input.filePath}>
-          <div data-component="edit-content">
+          <div data-component="action-card-preview" data-collapsed={expanded() ? undefined : ""}>
             <Dynamic
               component={diffComponent}
+              diffStyle="split"
               before={{
                 name: props.metadata?.filediff?.file || props.input.filePath,
                 contents: props.metadata?.filediff?.before || props.input.oldString,
@@ -1105,7 +1129,7 @@ ToolRegistry.register({
           </div>
         </Show>
         <DiagnosticsDisplay diagnostics={diagnostics()} />
-      </BasicTool>
+      </ActionCard>
     )
   },
 })
@@ -1113,33 +1137,36 @@ ToolRegistry.register({
 ToolRegistry.register({
   name: "write",
   render(props) {
+    const data = useData()
     const i18n = useI18n()
     const codeComponent = useCodeComponent()
     const diagnostics = createMemo(() => getDiagnostics(props.metadata.diagnostics, props.input.filePath))
     const filename = () => getFilename(props.input.filePath ?? "")
+    const [expanded, setExpanded] = createSignal(false)
+    const toggleLabel = () => (expanded() ? "Collapse" : "Expand")
+    const undo = () => {
+      if (!data.sendMessage) return
+      data.sendMessage("/undo")
+    }
     return (
-      <BasicTool
-        {...props}
+      <ActionCard
         icon="code-lines"
-        trigger={
-          <div data-component="write-trigger">
-            <div data-slot="message-part-title-area">
-              <div data-slot="message-part-title">
-                <span data-slot="message-part-title-text">{i18n.t("ui.messagePart.title.write")}</span>
-                <span data-slot="message-part-title-filename">{filename()}</span>
-              </div>
-              <Show when={props.input.filePath?.includes("/")}>
-                <div data-slot="message-part-path">
-                  <span data-slot="message-part-directory">{getDirectory(props.input.filePath!)}</span>
-                </div>
-              </Show>
-            </div>
-            <div data-slot="message-part-actions">{/* <DiffChanges diff={diff} /> */}</div>
-          </div>
+        title={i18n.t("ui.messagePart.title.write")}
+        subtitle={filename()}
+        actions={
+          <>
+            <Button variant="ghost" size="small" onClick={() => setExpanded(!expanded())}>
+              {toggleLabel()}
+            </Button>
+            <Button variant="ghost" size="small" icon="arrow-left" onClick={undo}>
+              Undo
+            </Button>
+          </>
         }
+        defaultOpen={true}
       >
         <Show when={props.input.content}>
-          <div data-component="write-content">
+          <div data-component="action-card-preview" data-collapsed={expanded() ? undefined : ""}>
             <Dynamic
               component={codeComponent}
               file={{
@@ -1152,7 +1179,7 @@ ToolRegistry.register({
           </div>
         </Show>
         <DiagnosticsDisplay diagnostics={diagnostics()} />
-      </BasicTool>
+      </ActionCard>
     )
   },
 })
@@ -1400,14 +1427,11 @@ ToolRegistry.register({
     }
 
     return (
-      <BasicTool
-        {...props}
-        icon="mcp"
+      <ActionCard
+        icon="magnifying-glass"
+        title="Toolbox Search"
+        subtitle={`${keyword()} (${resultCount()} ${category().toLowerCase()})`}
         defaultOpen={true}
-        trigger={{
-          title: "Toolbox Search",
-          subtitle: `${keyword()} (${resultCount()} ${category().toLowerCase()})`,
-        }}
       >
         <Show when={assets().length > 0}>
           <div data-component="toolbox-assets">
@@ -1448,7 +1472,552 @@ ToolRegistry.register({
             </div>
           )}
         </Show>
-      </BasicTool>
+      </ActionCard>
+    )
+  },
+})
+
+ToolRegistry.register({
+  name: "roblox_insert_asset",
+  render(props) {
+    const data = useData()
+    const assetId = () => props.input?.assetId ?? props.metadata?.assetId
+    const parent = () => props.input?.parent ?? "game.Workspace"
+    const name = () => props.input?.name
+    const status = () => getActionStatus(props.status)
+    const label = () => getStatusLabel(props.status)
+
+    const title = createMemo(() => {
+      if (name()) return `Inserted ${name()}`
+      if (assetId() !== undefined) return `Inserted asset ${assetId()}`
+      return "Inserted asset"
+    })
+
+    const undo = () => {
+      if (!data.sendMessage) return
+      data.sendMessage("/undo")
+    }
+
+    return (
+      <ActionCard
+        icon="models"
+        title={title()}
+        subtitle={parent()}
+        status={status()}
+        meta={<Show when={label()}>{(text) => <span data-slot="action-card-status">{text()}</span>}</Show>}
+        actions={
+          <Button variant="ghost" size="small" icon="arrow-left" onClick={undo}>
+            Undo
+          </Button>
+        }
+      >
+        <Show when={props.output}>
+          {(output) => (
+            <div data-component="tool-output" data-scrollable>
+              <Markdown text={output()} />
+            </div>
+          )}
+        </Show>
+      </ActionCard>
+    )
+  },
+})
+
+ToolRegistry.register({
+  name: "roblox_create",
+  render(props) {
+    const data = useData()
+    const status = () => getActionStatus(props.status)
+    const label = () => getStatusLabel(props.status)
+    const className = () => props.input?.className ?? "Instance"
+    const path = () => props.metadata?.path ?? props.input?.parent
+
+    const undo = () => {
+      if (!data.sendMessage) return
+      data.sendMessage("/undo")
+    }
+
+    return (
+      <ActionCard
+        icon="plus"
+        title={`Created ${className()}`}
+        subtitle={path()}
+        status={status()}
+        meta={<Show when={label()}>{(text) => <span data-slot="action-card-status">{text()}</span>}</Show>}
+        actions={
+          <Button variant="ghost" size="small" icon="arrow-left" onClick={undo}>
+            Undo
+          </Button>
+        }
+      >
+        <Show when={props.output}>
+          {(output) => (
+            <div data-component="tool-output" data-scrollable>
+              <Markdown text={output()} />
+            </div>
+          )}
+        </Show>
+      </ActionCard>
+    )
+  },
+})
+
+ToolRegistry.register({
+  name: "roblox_delete",
+  render(props) {
+    const data = useData()
+    const status = () => getActionStatus(props.status)
+    const label = () => getStatusLabel(props.status)
+    const path = () => props.metadata?.path ?? props.input?.path
+
+    const undo = () => {
+      if (!data.sendMessage) return
+      data.sendMessage("/undo")
+    }
+
+    return (
+      <ActionCard
+        icon="trash"
+        title="Deleted instance"
+        subtitle={path()}
+        status={status()}
+        meta={<Show when={label()}>{(text) => <span data-slot="action-card-status">{text()}</span>}</Show>}
+        actions={
+          <Button variant="ghost" size="small" icon="arrow-left" onClick={undo}>
+            Undo
+          </Button>
+        }
+      >
+        <Show when={props.output}>
+          {(output) => (
+            <div data-component="tool-output" data-scrollable>
+              <Markdown text={output()} />
+            </div>
+          )}
+        </Show>
+      </ActionCard>
+    )
+  },
+})
+
+ToolRegistry.register({
+  name: "roblox_clone",
+  render(props) {
+    const data = useData()
+    const status = () => getActionStatus(props.status)
+    const label = () => getStatusLabel(props.status)
+    const path = () => props.metadata?.path ?? props.input?.path
+
+    const undo = () => {
+      if (!data.sendMessage) return
+      data.sendMessage("/undo")
+    }
+
+    return (
+      <ActionCard
+        icon="copy"
+        title="Cloned instance"
+        subtitle={path()}
+        status={status()}
+        meta={<Show when={label()}>{(text) => <span data-slot="action-card-status">{text()}</span>}</Show>}
+        actions={
+          <Button variant="ghost" size="small" icon="arrow-left" onClick={undo}>
+            Undo
+          </Button>
+        }
+      >
+        <Show when={props.output}>
+          {(output) => (
+            <div data-component="tool-output" data-scrollable>
+              <Markdown text={output()} />
+            </div>
+          )}
+        </Show>
+      </ActionCard>
+    )
+  },
+})
+
+ToolRegistry.register({
+  name: "roblox_move",
+  render(props) {
+    const data = useData()
+    const status = () => getActionStatus(props.status)
+    const label = () => getStatusLabel(props.status)
+    const path = () => props.metadata?.path ?? props.input?.path
+    const target = () => props.input?.newParent
+
+    const subtitle = createMemo(() => {
+      if (path() && target()) return `${path()} → ${target()}`
+      if (path()) return path()
+      return target()
+    })
+
+    const undo = () => {
+      if (!data.sendMessage) return
+      data.sendMessage("/undo")
+    }
+
+    return (
+      <ActionCard
+        icon="arrow-right"
+        title="Moved instance"
+        subtitle={subtitle()}
+        status={status()}
+        meta={<Show when={label()}>{(text) => <span data-slot="action-card-status">{text()}</span>}</Show>}
+        actions={
+          <Button variant="ghost" size="small" icon="arrow-left" onClick={undo}>
+            Undo
+          </Button>
+        }
+      >
+        <Show when={props.output}>
+          {(output) => (
+            <div data-component="tool-output" data-scrollable>
+              <Markdown text={output()} />
+            </div>
+          )}
+        </Show>
+      </ActionCard>
+    )
+  },
+})
+
+ToolRegistry.register({
+  name: "roblox_set_property",
+  render(props) {
+    const data = useData()
+    const status = () => getActionStatus(props.status)
+    const label = () => getStatusLabel(props.status)
+    const property = () => props.input?.property
+    const value = () => props.input?.value
+    const path = () => props.metadata?.path ?? props.input?.path
+
+    const subtitle = createMemo(() => {
+      if (path() && property()) return `${path()} · ${property()}`
+      if (path()) return path()
+      return property()
+    })
+
+    const metaValue = createMemo(() => {
+      if (!value()) return undefined
+      return `= ${value()}`
+    })
+
+    const undo = () => {
+      if (!data.sendMessage) return
+      data.sendMessage("/undo")
+    }
+
+    return (
+      <ActionCard
+        icon="sliders"
+        title="Updated property"
+        subtitle={subtitle()}
+        status={status()}
+        meta={
+          <div class="flex items-center gap-2">
+            <Show when={metaValue()}>{(text) => <span data-slot="action-card-status">{text()}</span>}</Show>
+            <Show when={label()}>{(text) => <span data-slot="action-card-status">{text()}</span>}</Show>
+          </div>
+        }
+        actions={
+          <Button variant="ghost" size="small" icon="arrow-left" onClick={undo}>
+            Undo
+          </Button>
+        }
+      >
+        <Show when={props.output}>
+          {(output) => (
+            <div data-component="tool-output" data-scrollable>
+              <Markdown text={output()} />
+            </div>
+          )}
+        </Show>
+      </ActionCard>
+    )
+  },
+})
+
+ToolRegistry.register({
+  name: "roblox_run_code",
+  render(props) {
+    const data = useData()
+    const status = () => getActionStatus(props.status)
+    const label = () => getStatusLabel(props.status)
+    const code = () => props.input?.code ?? ""
+
+    const undo = () => {
+      if (!data.sendMessage) return
+      data.sendMessage("/undo")
+    }
+
+    return (
+      <ActionCard
+        icon="console"
+        title="Run code"
+        subtitle="Studio Command Bar"
+        status={status()}
+        meta={<Show when={label()}>{(text) => <span data-slot="action-card-status">{text()}</span>}</Show>}
+        actions={
+          <Button variant="ghost" size="small" icon="arrow-left" onClick={undo}>
+            Undo
+          </Button>
+        }
+        defaultOpen={true}
+      >
+        <Show when={code().trim().length > 0}>
+          <div data-component="action-card-preview" data-collapsed>
+            <Markdown text={`\`\`\`lua\n${code()}\n\`\`\``} />
+          </div>
+        </Show>
+        <Show when={props.output}>
+          {(output) => (
+            <div data-component="tool-output" data-scrollable>
+              <Markdown text={output()} />
+            </div>
+          )}
+        </Show>
+      </ActionCard>
+    )
+  },
+})
+
+ToolRegistry.register({
+  name: "roblox_set_script",
+  render(props) {
+    const data = useData()
+    const codeComponent = useCodeComponent()
+    const status = () => getActionStatus(props.status)
+    const label = () => getStatusLabel(props.status)
+    const path = () => props.metadata?.path ?? props.input?.path
+    const source = () => props.input?.source ?? ""
+    const [expanded, setExpanded] = createSignal(false)
+    const toggleLabel = () => (expanded() ? "Collapse" : "Expand")
+
+    const undo = () => {
+      if (!data.sendMessage) return
+      data.sendMessage("/undo")
+    }
+
+    return (
+      <ActionCard
+        icon="code"
+        title="Updated script"
+        subtitle={path()}
+        status={status()}
+        meta={<Show when={label()}>{(text) => <span data-slot="action-card-status">{text()}</span>}</Show>}
+        actions={
+          <>
+            <Button variant="ghost" size="small" onClick={() => setExpanded(!expanded())}>
+              {toggleLabel()}
+            </Button>
+            <Button variant="ghost" size="small" icon="arrow-left" onClick={undo}>
+              Undo
+            </Button>
+          </>
+        }
+        defaultOpen={true}
+      >
+        <Show when={source().trim().length > 0}>
+          <div data-component="action-card-preview" data-collapsed={expanded() ? undefined : ""}>
+            <Dynamic
+              component={codeComponent}
+              file={{
+                name: path(),
+                contents: source(),
+                cacheKey: checksum(source()),
+              }}
+              overflow="scroll"
+            />
+          </div>
+        </Show>
+        <Show when={props.output}>
+          {(output) => (
+            <div data-component="tool-output" data-scrollable>
+              <Markdown text={output()} />
+            </div>
+          )}
+        </Show>
+      </ActionCard>
+    )
+  },
+})
+
+ToolRegistry.register({
+  name: "roblox_edit_script",
+  render(props) {
+    const data = useData()
+    const codeComponent = useCodeComponent()
+    const status = () => getActionStatus(props.status)
+    const label = () => getStatusLabel(props.status)
+    const path = () => props.metadata?.path ?? props.input?.path
+    const source = () => props.input?.newCode ?? ""
+    const [expanded, setExpanded] = createSignal(false)
+    const toggleLabel = () => (expanded() ? "Collapse" : "Expand")
+
+    const undo = () => {
+      if (!data.sendMessage) return
+      data.sendMessage("/undo")
+    }
+
+    return (
+      <ActionCard
+        icon="edit"
+        title="Edited script"
+        subtitle={path()}
+        status={status()}
+        meta={<Show when={label()}>{(text) => <span data-slot="action-card-status">{text()}</span>}</Show>}
+        actions={
+          <>
+            <Button variant="ghost" size="small" onClick={() => setExpanded(!expanded())}>
+              {toggleLabel()}
+            </Button>
+            <Button variant="ghost" size="small" icon="arrow-left" onClick={undo}>
+              Undo
+            </Button>
+          </>
+        }
+        defaultOpen={true}
+      >
+        <Show when={source().trim().length > 0}>
+          <div data-component="action-card-preview" data-collapsed={expanded() ? undefined : ""}>
+            <Dynamic
+              component={codeComponent}
+              file={{
+                name: path(),
+                contents: source(),
+                cacheKey: checksum(source()),
+              }}
+              overflow="scroll"
+            />
+          </div>
+        </Show>
+        <Show when={props.output}>
+          {(output) => (
+            <div data-component="tool-output" data-scrollable>
+              <Markdown text={output()} />
+            </div>
+          )}
+        </Show>
+      </ActionCard>
+    )
+  },
+})
+
+ToolRegistry.register({
+  name: "roblox_get_children",
+  render(props) {
+    const status = () => getActionStatus(props.status)
+    const label = () => getStatusLabel(props.status)
+    const path = () => props.input?.path
+
+    return (
+      <ActionCard
+        icon="bullet-list"
+        title="Children"
+        subtitle={path()}
+        status={status()}
+        meta={<Show when={label()}>{(text) => <span data-slot="action-card-status">{text()}</span>}</Show>}
+        defaultOpen={true}
+      >
+        <Show when={props.output}>
+          {(output) => (
+            <div data-component="tool-output" data-scrollable>
+              <Markdown text={output()} />
+            </div>
+          )}
+        </Show>
+      </ActionCard>
+    )
+  },
+})
+
+ToolRegistry.register({
+  name: "roblox_get_properties",
+  render(props) {
+    const status = () => getActionStatus(props.status)
+    const label = () => getStatusLabel(props.status)
+    const path = () => props.input?.path
+
+    return (
+      <ActionCard
+        icon="sliders"
+        title="Properties"
+        subtitle={path()}
+        status={status()}
+        meta={<Show when={label()}>{(text) => <span data-slot="action-card-status">{text()}</span>}</Show>}
+        defaultOpen={true}
+      >
+        <Show when={props.output}>
+          {(output) => (
+            <div data-component="tool-output" data-scrollable>
+              <Markdown text={output()} />
+            </div>
+          )}
+        </Show>
+      </ActionCard>
+    )
+  },
+})
+
+ToolRegistry.register({
+  name: "roblox_search",
+  render(props) {
+    const status = () => getActionStatus(props.status)
+    const label = () => getStatusLabel(props.status)
+    const name = () => props.input?.name
+    const className = () => props.input?.className
+
+    const subtitle = createMemo(() => {
+      if (name() && className()) return `${name()} · ${className()}`
+      if (name()) return name()
+      return className()
+    })
+
+    return (
+      <ActionCard
+        icon="magnifying-glass"
+        title="Search instances"
+        subtitle={subtitle()}
+        status={status()}
+        meta={<Show when={label()}>{(text) => <span data-slot="action-card-status">{text()}</span>}</Show>}
+        defaultOpen={true}
+      >
+        <Show when={props.output}>
+          {(output) => (
+            <div data-component="tool-output" data-scrollable>
+              <Markdown text={output()} />
+            </div>
+          )}
+        </Show>
+      </ActionCard>
+    )
+  },
+})
+
+ToolRegistry.register({
+  name: "roblox_get_selection",
+  render(props) {
+    const status = () => getActionStatus(props.status)
+    const label = () => getStatusLabel(props.status)
+
+    return (
+      <ActionCard
+        icon="selector"
+        title="Studio selection"
+        status={status()}
+        meta={<Show when={label()}>{(text) => <span data-slot="action-card-status">{text()}</span>}</Show>}
+        defaultOpen={true}
+      >
+        <Show when={props.output}>
+          {(output) => (
+            <div data-component="tool-output" data-scrollable>
+              <Markdown text={output()} />
+            </div>
+          )}
+        </Show>
+      </ActionCard>
     )
   },
 })

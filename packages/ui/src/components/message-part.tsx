@@ -1774,10 +1774,10 @@ ToolRegistry.register({
             Undo
           </Button>
         }
-        defaultOpen={true}
+        defaultOpen={false}
       >
         <Show when={code().trim().length > 0}>
-          <div data-component="action-card-preview" data-collapsed>
+          <div data-component="action-card-preview">
             <Markdown text={`\`\`\`lua\n${code()}\n\`\`\``} />
           </div>
         </Show>

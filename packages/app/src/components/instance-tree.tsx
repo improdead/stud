@@ -1,24 +1,18 @@
 import { Collapsible } from "@stud/ui/collapsible"
 import { InstanceIcon } from "@stud/ui/instance-icon"
 import { Icon } from "@stud/ui/icon"
-import { Tooltip } from "@stud/ui/tooltip"
 import {
   createEffect,
   createMemo,
   createResource,
   createSignal,
   For,
-  Match,
   Show,
-  Switch,
-  type ParentProps,
 } from "solid-js"
-import { createStore } from "solid-js/store"
 import { useServer } from "@/context/server"
 import { useInstance } from "@/context/instance"
 import { studioRequest } from "@/utils/studio"
 import { usePlatform } from "@/context/platform"
-import { base64Encode } from "@stud/util/encode"
 
 export interface InstanceNode {
   name: string
@@ -38,8 +32,9 @@ async function fetchInstanceTree(
   url: string,
   directory: string,
   customFetch: typeof fetch,
-): Promise<{ tree: InstanceNode | null; projectFile: string | null }> {
-  const response = await customFetch(`${url}/instance-tree/tree`, {
+  source: "rojo" | "studio" = "rojo",
+): Promise<{ tree: InstanceNode | null; projectFile: string | null; source?: "rojo" | "studio" }> {
+  const response = await customFetch(`${url}/instance-tree/tree?source=${source}`, {
     headers: {
       "x-stud-directory": encodeURIComponent(directory),
     },
@@ -48,28 +43,88 @@ async function fetchInstanceTree(
   return response.json()
 }
 
+function filterTree(node: InstanceNode, query: string): InstanceNode | null {
+  const lowerQuery = query.toLowerCase()
+  const nameMatches = node.name.toLowerCase().includes(lowerQuery)
+  const classMatches = node.className.toLowerCase().includes(lowerQuery)
+
+  // Filter children recursively
+  const filteredChildren = node.children
+    ?.map((child) => filterTree(child, query))
+    .filter((child): child is InstanceNode => child !== null)
+
+  // Include this node if it matches or has matching children
+  if (nameMatches || classMatches || (filteredChildren && filteredChildren.length > 0)) {
+    return {
+      ...node,
+      children: filteredChildren,
+    }
+  }
+
+  return null
+}
+
 export function InstanceTree(props: InstanceTreeProps) {
   const server = useServer()
   const platform = usePlatform()
+  const [searchQuery, setSearchQuery] = createSignal("")
 
-  const [data] = createResource(
+  // Always try Studio mode - backend will fall back to Rojo if not connected
+  const [data, { refetch }] = createResource(
     () => ({ url: server.url, directory: props.directory }),
-    (source) => fetchInstanceTree(source.url, source.directory, platform.fetch ?? fetch),
+    (source) => fetchInstanceTree(source.url, source.directory, platform.fetch ?? fetch, "studio"),
   )
+
+  const filteredTree = createMemo(() => {
+    const tree = data()?.tree
+    if (!tree) return null
+    const query = searchQuery().trim()
+    if (!query) return tree
+    return filterTree(tree, query)
+  })
 
   return (
     <div class={`flex flex-col ${props.class ?? ""}`}>
+      {/* Search Bar */}
+      <div class="px-1 pb-1.5">
+        <div class="relative">
+          <Icon
+            name="search"
+            size="small"
+            class="absolute left-2 top-1/2 -translate-y-1/2 text-icon-subtle pointer-events-none"
+          />
+          <input
+            type="text"
+            placeholder="Search..."
+            value={searchQuery()}
+            onInput={(e) => setSearchQuery(e.currentTarget.value)}
+            class="w-full h-7 pl-7 pr-7 rounded-md bg-surface-inset-base border border-border-weak-base text-12-regular text-text-base placeholder:text-text-subtle focus:outline-none focus:border-border-base focus:ring-1 focus:ring-border-base transition-colors"
+          />
+          <Show when={searchQuery()}>
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              class="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-surface-base-hover text-icon-subtle hover:text-icon-base transition-colors"
+            >
+              <Icon name="close" size="small" />
+            </button>
+          </Show>
+        </div>
+      </div>
+
       <Show when={data.loading}>
         <div class="px-2 py-1.5 text-12-regular text-text-subtle">Loading...</div>
       </Show>
       <Show when={data.error}>
         <div class="px-2 py-1.5 text-12-regular text-text-subtle">Failed to load</div>
       </Show>
-      <Show when={data()?.tree}>
-        {(tree) => <InstanceTreeNode node={tree()} level={0} onFileClick={props.onFileClick} />}
+      <Show when={filteredTree()}>
+        {(tree) => <InstanceTreeNode node={tree()} level={0} onFileClick={props.onFileClick} forceExpand={!!searchQuery()} />}
       </Show>
-      <Show when={!data.loading && !data.error && !data()?.tree}>
-        <div class="px-2 py-1.5 text-12-regular text-text-subtle opacity-60">No Rojo project found</div>
+      <Show when={!data.loading && !data.error && !filteredTree()}>
+        <div class="px-2 py-1.5 text-12-regular text-text-subtle opacity-60">
+          {searchQuery() ? "No matches found" : "No Rojo project found"}
+        </div>
       </Show>
     </div>
   )
@@ -79,14 +134,22 @@ interface InstanceTreeNodeProps {
   node: InstanceNode
   level: number
   onFileClick?: (filePath: string) => void
+  forceExpand?: boolean
 }
 
 function InstanceTreeNode(props: InstanceTreeNodeProps) {
   const instance = useInstance()
-  const [expanded, setExpanded] = createSignal(props.level < 2)
+  const [expanded, setExpanded] = createSignal(props.forceExpand || props.level < 2)
   const hasChildren = () => props.node.children && props.node.children.length > 0
   const isClickable = () => !!props.node.filePath
   const isSelected = () => instance.selected()?.path === props.node.path
+
+  // Auto-expand when forceExpand changes (for search)
+  createEffect(() => {
+    if (props.forceExpand) {
+      setExpanded(true)
+    }
+  })
 
   const handleClick = () => {
     instance.setSelected({
@@ -148,7 +211,7 @@ function InstanceTreeNode(props: InstanceTreeNodeProps) {
               style={{ left: `${Math.max(0, 4 + props.level * 12) + 8}px` }}
             />
             <For each={props.node.children}>
-              {(child) => <InstanceTreeNode node={child} level={props.level + 1} onFileClick={props.onFileClick} />}
+              {(child) => <InstanceTreeNode node={child} level={props.level + 1} onFileClick={props.onFileClick} forceExpand={props.forceExpand} />}
             </For>
           </Collapsible.Content>
         </Collapsible>

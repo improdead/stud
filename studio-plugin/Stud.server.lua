@@ -530,14 +530,15 @@ local function instanceToInfo(instance, includeChildren)
 		name = instance.Name,
 		className = instance.ClassName,
 	}
-	
+
 	if includeChildren then
 		info.children = {}
 		for _, child in ipairs(instance:GetChildren()) do
-			table.insert(info.children, instanceToInfo(child, false))
+			-- Recursively include children for hierarchical tree
+			table.insert(info.children, instanceToInfo(child, true))
 		end
 	end
-	
+
 	return info
 end
 
@@ -619,19 +620,20 @@ handlers["/instance/children"] = function(data)
 	if not instance then
 		error("Instance not found: " .. data.path)
 	end
-	
+
 	local children = {}
-	
+
 	if data.recursive then
-		for _, child in ipairs(instance:GetDescendants()) do
-			table.insert(children, instanceToInfo(child, false))
+		-- Return hierarchical tree structure
+		for _, child in ipairs(instance:GetChildren()) do
+			table.insert(children, instanceToInfo(child, true))
 		end
 	else
 		for _, child in ipairs(instance:GetChildren()) do
 			table.insert(children, instanceToInfo(child, false))
 		end
 	end
-	
+
 	return children
 end
 

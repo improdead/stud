@@ -1,5 +1,5 @@
-import { createMemo, createSignal, For, Index, onMount, Show } from "solid-js"
-import { Motion, Presence } from "solid-motionone"
+import { createMemo, createSignal, Index, onMount, Show } from "solid-js"
+import { Motion } from "solid-motionone"
 import { useParams, useNavigate } from "@solidjs/router"
 import { useLanguage } from "@/context/language"
 import { useGlobalSync } from "@/context/global-sync"
@@ -9,7 +9,6 @@ import { decode64 } from "@/utils/base64"
 import { Icon } from "@stud/ui/icon"
 import { IconButton } from "@stud/ui/icon-button"
 import { ResizeHandle } from "@stud/ui/resize-handle"
-import { Collapsible } from "@stud/ui/collapsible"
 import { Tooltip } from "@stud/ui/tooltip"
 import { DialogProjectRules } from "@/components/dialog-project-rules"
 import { DialogSettings } from "@/components/dialog-settings"
@@ -191,39 +190,37 @@ export function SessionLeftSidebar(props: SessionLeftSidebarProps) {
       </div>
 
       {/* Explorer Section */}
-      <div class="mt-2 flex-1 min-h-0 flex flex-col">
-        <Collapsible
-          variant="ghost"
-          class="w-full flex-1 min-h-0 flex flex-col"
-          open={explorerOpen()}
-          onOpenChange={setExplorerOpen}
+      <div class="mt-2 flex flex-col" classList={{ "flex-1 min-h-0": explorerOpen() }}>
+        <button
+          type="button"
+          class="flex items-center justify-between px-3 py-1.5 group cursor-pointer hover:bg-surface-base-hover rounded mx-1"
+          onClick={() => setExplorerOpen(!explorerOpen())}
         >
-          <Collapsible.Trigger>
-            <div class="flex items-center justify-between px-3 py-1.5 group cursor-pointer hover:bg-surface-base-hover rounded mx-1">
-              <div class="flex items-center gap-1.5">
-                <Icon
-                  name="chevron-down"
-                  size="small"
-                  class="text-text-subtle transition-transform duration-200"
-                  classList={{ "-rotate-90": !explorerOpen() }}
-                />
-                <span class="text-11-medium text-text-subtle uppercase tracking-wider group-hover:text-text-weak transition-colors">
-                  {language.t("sidebar.instanceTree")}
-                </span>
-              </div>
-            </div>
-          </Collapsible.Trigger>
-          <Collapsible.Content class="flex-1 min-h-0 overflow-y-auto">
-            <InstanceTree
-              directory={directory()}
-              class="px-1"
-              onFileClick={(filePath) => {
-                // TODO: Open file in editor
-                console.log("Open file:", filePath)
-              }}
+          <div class="flex items-center gap-1.5">
+            <Icon
+              name="chevron-down"
+              size="small"
+              class="text-text-subtle transition-transform duration-200"
+              classList={{ "-rotate-90": !explorerOpen() }}
             />
-          </Collapsible.Content>
-        </Collapsible>
+            <span class="text-11-medium text-text-subtle uppercase tracking-wider group-hover:text-text-weak transition-colors">
+              {language.t("sidebar.instanceTree")}
+            </span>
+          </div>
+        </button>
+        <div
+          class="flex-1 min-h-0 overflow-y-auto"
+          classList={{ hidden: !explorerOpen() }}
+        >
+          <InstanceTree
+            directory={directory()}
+            class="px-1"
+            onFileClick={(filePath) => {
+              // TODO: Open file in editor
+              console.log("Open file:", filePath)
+            }}
+          />
+        </div>
       </div>
 
       {/* Footer */}

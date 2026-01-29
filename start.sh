@@ -456,7 +456,18 @@ run_prereq_checks() {
 # ─────────────────────────────────────────────────────────────────────────────────
 
 install_dependencies() {
-    if [ ! -d "node_modules" ] || [ "package.json" -nt "node_modules" ] || [ "bun.lock" -nt "node_modules" ]; then
+    # Check if node_modules needs update
+    local needs_install=false
+
+    if [ ! -d "node_modules" ]; then
+        needs_install=true
+    elif [ "package.json" -nt "node_modules" ]; then
+        needs_install=true
+    elif [ "bun.lock" -nt "node_modules" ]; then
+        needs_install=true
+    fi
+
+    if [ "$needs_install" = true ]; then
         start_spinner "Installing dependencies"
         bun install --silent 2>/dev/null
         stop_spinner
@@ -466,10 +477,39 @@ install_dependencies() {
     fi
 }
 
+check_source_changes() {
+    # Check if any source files have changed since last build
+    # This helps users know if they need to restart the app
+    local last_build_marker="$SCRIPT_DIR/.last-dev-start"
+
+    if [ ! -f "$last_build_marker" ]; then
+        touch "$last_build_marker"
+        return 0
+    fi
+
+    local changed_files=0
+
+    # Check for changes in key directories
+    for dir in "packages/core/src" "packages/ui/src" "packages/app/src" "studio-plugin"; do
+        if [ -d "$SCRIPT_DIR/$dir" ]; then
+            local newer_files=$(find "$SCRIPT_DIR/$dir" -type f \( -name "*.ts" -o -name "*.tsx" -o -name "*.lua" -o -name "*.css" \) -newer "$last_build_marker" 2>/dev/null | wc -l | tr -d ' ')
+            changed_files=$((changed_files + newer_files))
+        fi
+    done
+
+    if [ "$changed_files" -gt 0 ]; then
+        status_ok "Source changes detected ($changed_files files)"
+        echo -e "         ${DIM}Hot reload will apply most changes automatically${NC}"
+    fi
+
+    # Update the marker
+    touch "$last_build_marker"
+}
+
 install_plugin() {
     local plugin_source="$SCRIPT_DIR/studio-plugin/Stud.server.lua"
     local plugin_dir=""
-    
+
     # Determine plugin directory
     if [[ "$OSTYPE" == "darwin"* ]]; then
         plugin_dir="$HOME/Documents/Roblox/Plugins"
@@ -478,17 +518,26 @@ install_plugin() {
     else
         plugin_dir="$HOME/.local/share/roblox/plugins"
     fi
-    
+
     if [ ! -f "$plugin_source" ]; then
         status_skip "Plugin source not found"
         return 0
     fi
-    
+
     mkdir -p "$plugin_dir"
-    
-    if [ ! -f "$plugin_dir/Stud.server.lua" ] || [ "$plugin_source" -nt "$plugin_dir/Stud.server.lua" ]; then
+
+    local installed_plugin="$plugin_dir/Stud.server.lua"
+
+    # Check if plugin needs to be installed or updated
+    if [ ! -f "$installed_plugin" ]; then
         cp "$plugin_source" "$plugin_dir/"
         status_ok "Plugin installed to $plugin_dir"
+        echo -e "         ${DIM}Reload Studio to use the new plugin${NC}"
+    elif [ "$plugin_source" -nt "$installed_plugin" ]; then
+        # Plugin was updated - copy new version
+        cp "$plugin_source" "$plugin_dir/"
+        status_ok "Plugin updated (changes detected)"
+        echo -e "         ${YELLOW}→ Reload the plugin in Studio to apply changes${NC}"
     else
         status_ok "Plugin up to date"
     fi
@@ -540,15 +589,17 @@ build_core() {
 
 run_setup() {
     section "Setup"
-    
+
     install_dependencies
-    
+
     if [ "$SKIP_PLUGIN" != "true" ]; then
         install_plugin
     else
         status_skip "Plugin installation skipped"
     fi
-    
+
+    check_source_changes
+
     build_core
 }
 

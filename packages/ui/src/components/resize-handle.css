@@ -7,6 +7,7 @@
     position: absolute;
     opacity: 0;
     transition: opacity 0.15s ease-in-out;
+    background-color: var(--border-weak-base, rgba(0, 0, 0, 0.2));
   }
 
   &:hover::after,

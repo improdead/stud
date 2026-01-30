@@ -8,7 +8,6 @@ import { base64Encode } from "@stud/util/encode"
 import { decode64 } from "@/utils/base64"
 import { Icon } from "@stud/ui/icon"
 import { IconButton } from "@stud/ui/icon-button"
-import { ResizeHandle } from "@stud/ui/resize-handle"
 import { Tooltip } from "@stud/ui/tooltip"
 import { DialogProjectRules } from "@/components/dialog-project-rules"
 import { DialogSettings } from "@/components/dialog-settings"
@@ -29,6 +28,8 @@ export function SessionLeftSidebar(props: SessionLeftSidebarProps) {
   const dialog = useDialog()
   const [mounted, setMounted] = createSignal(false)
   const [explorerOpen, setExplorerOpen] = createSignal(true)
+  const [explorerHeight, setExplorerHeight] = createSignal(300)
+  const [dragging, setDragging] = createSignal("none")
 
   onMount(() => {
     setTimeout(() => setMounted(true), 50)
@@ -86,13 +87,65 @@ export function SessionLeftSidebar(props: SessionLeftSidebarProps) {
 
   const isActive = (session: Session) => session.id === params.id
 
+  const handleResizeStart = (e: MouseEvent) => {
+    e.preventDefault()
+    setDragging("split")
+    const startY = e.clientY
+    const startHeight = explorerHeight()
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const delta = startY - moveEvent.clientY
+      const newHeight = Math.min(500, Math.max(100, startHeight + delta))
+      setExplorerHeight(newHeight)
+    }
+
+    const onMouseUp = () => {
+      setDragging("none")
+      document.removeEventListener("mousemove", onMouseMove)
+      document.removeEventListener("mouseup", onMouseUp)
+      document.body.style.cursor = ""
+      document.body.style.userSelect = ""
+    }
+
+    document.body.style.cursor = "row-resize"
+    document.body.style.userSelect = "none"
+    document.addEventListener("mousemove", onMouseMove)
+    document.addEventListener("mouseup", onMouseUp)
+  }
+
+  const handleSidebarResizeStart = (e: MouseEvent) => {
+    e.preventDefault()
+    setDragging("side")
+    const startX = e.clientX
+    const startWidth = props.width
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const delta = moveEvent.clientX - startX
+      const next = Math.min(400, Math.max(200, startWidth + delta))
+      props.onResize(next)
+    }
+
+    const onMouseUp = () => {
+      setDragging("none")
+      document.removeEventListener("mousemove", onMouseMove)
+      document.removeEventListener("mouseup", onMouseUp)
+      document.body.style.cursor = ""
+      document.body.style.userSelect = ""
+    }
+
+    document.body.style.cursor = "col-resize"
+    document.body.style.userSelect = "none"
+    document.addEventListener("mousemove", onMouseMove)
+    document.addEventListener("mouseup", onMouseUp)
+  }
+
   return (
     <Motion.div
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.3, easing: [0.22, 1, 0.36, 1] }}
-      class="relative flex flex-col h-full bg-background-base"
-      style={{ width: `${props.width}px` }}
+      class="relative flex flex-col h-full bg-background-base shrink-0"
+      style={{ width: `${props.width}px`, "min-width": "200px", "max-width": "400px" }}
     >
       {/* Navigation */}
       <div class="flex flex-col px-2 pt-3 pb-2 gap-0.5">
@@ -187,7 +240,21 @@ export function SessionLeftSidebar(props: SessionLeftSidebarProps) {
       </div>
 
       {/* Explorer Section */}
-      <div class="mt-2 flex flex-col" classList={{ "flex-1 min-h-0": explorerOpen() }}>
+      <Show when={explorerOpen()}>
+        <div
+          class="h-1.5 cursor-row-resize flex items-center justify-center group hover:bg-surface-base-hover transition-colors"
+          onMouseDown={handleResizeStart}
+        >
+          <div
+            class="w-8 h-0.5 rounded-full bg-border-weak-base transition-opacity group-hover:opacity-100"
+            classList={{ "opacity-100": dragging() === "split", "opacity-0": dragging() !== "split" }}
+          />
+        </div>
+      </Show>
+      <div
+        class="flex flex-col"
+        style={{ height: explorerOpen() ? `${explorerHeight()}px` : "auto", "flex-shrink": "0" }}
+      >
         <button
           type="button"
           class="flex items-center justify-between px-3 py-1.5 group cursor-pointer hover:bg-surface-base-hover rounded mx-1"
@@ -205,10 +272,7 @@ export function SessionLeftSidebar(props: SessionLeftSidebarProps) {
             </span>
           </div>
         </button>
-        <div
-          class="flex-1 min-h-0 overflow-y-auto"
-          classList={{ hidden: !explorerOpen() }}
-        >
+        <div class="flex-1 min-h-0 overflow-y-auto" classList={{ hidden: !explorerOpen() }}>
           <InstanceTree
             directory={directory()}
             class="px-1"
@@ -248,7 +312,12 @@ export function SessionLeftSidebar(props: SessionLeftSidebarProps) {
       </Motion.div>
 
       {/* Resize Handle */}
-      <ResizeHandle direction="horizontal" size={props.width} min={200} max={400} onResize={props.onResize} />
+      <div class="absolute inset-y-0 right-0 w-2 cursor-col-resize group" onMouseDown={handleSidebarResizeStart}>
+        <div
+          class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-8 w-0.5 rounded-full bg-border-weak-base transition-opacity group-hover:opacity-100"
+          classList={{ "opacity-100": dragging() === "side", "opacity-0": dragging() !== "side" }}
+        />
+      </div>
     </Motion.div>
   )
 }

@@ -76,10 +76,11 @@
     white-space: pre-wrap;
     word-break: break-word;
     overflow: hidden;
-    background: var(--surface-raised-base);
-    border: 1px solid var(--border-weak-base);
+    background: none;
+    border: none;
     padding: 12px 14px;
     border-radius: var(--radius-lg);
+    box-shadow: none;
 
     [data-highlight="file"] {
       color: var(--syntax-property);

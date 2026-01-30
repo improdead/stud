@@ -1,5 +1,6 @@
 import { Slug } from "@stud/util/slug"
 import path from "path"
+import { existsSync } from "fs"
 import { BusEvent } from "@/bus/bus-event"
 import { Bus } from "@/bus"
 import { Decimal } from "decimal.js"
@@ -233,10 +234,21 @@ export namespace Session {
   }
 
   export function plan(input: { slug: string; time: { created: number } }) {
-    const base = Instance.project.vcs
-      ? path.join(Instance.worktree, ".opencode", "plans")
-      : path.join(Global.Path.data, "plans")
-    return path.join(base, [input.time.created, input.slug].join("-") + ".md")
+    const filename = [input.time.created, input.slug].join("-") + ".md"
+
+    if (Instance.project.vcs) {
+      // Check .stud/plans first, fall back to .opencode/plans for backwards compat
+      const studPath = path.join(Instance.worktree, ".stud", "plans", filename)
+      const opencodePath = path.join(Instance.worktree, ".opencode", "plans", filename)
+
+      // If file exists in .opencode but not .stud, return .opencode path
+      if (!existsSync(studPath) && existsSync(opencodePath)) {
+        return opencodePath
+      }
+      return studPath
+    }
+
+    return path.join(Global.Path.data, "plans", filename)
   }
 
   export const get = fn(Identifier.schema("session"), async (id) => {

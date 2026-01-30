@@ -101,20 +101,20 @@ export namespace Config {
 
     const directories = [
       Global.Path.config,
-      // Only scan project .opencode/ directories when project discovery is enabled
+      // Only scan project .stud/ and .opencode/ directories when project discovery is enabled
       ...(!Flag.OPENCODE_DISABLE_PROJECT_CONFIG
         ? await Array.fromAsync(
             Filesystem.up({
-              targets: [".opencode"],
+              targets: [".stud", ".opencode"],
               start: Instance.directory,
               stop: Instance.worktree,
             }),
           )
         : []),
-      // Always scan ~/.opencode/ (user home directory)
+      // Always scan ~/.stud/ and ~/.opencode/ (user home directory) for backwards compat
       ...(await Array.fromAsync(
         Filesystem.up({
-          targets: [".opencode"],
+          targets: [".stud", ".opencode"],
           start: Global.Path.home,
           stop: Global.Path.home,
         }),
@@ -257,7 +257,7 @@ export namespace Config {
       })
       if (!md) continue
 
-      const patterns = ["/.opencode/command/", "/.opencode/commands/", "/command/", "/commands/"]
+      const patterns = ["/.stud/command/", "/.stud/commands/", "/.opencode/command/", "/.opencode/commands/", "/command/", "/commands/"]
       const file = rel(item, patterns) ?? path.basename(item)
       const name = trim(file)
 
@@ -297,7 +297,7 @@ export namespace Config {
       })
       if (!md) continue
 
-      const patterns = ["/.opencode/agent/", "/.opencode/agents/", "/agent/", "/agents/"]
+      const patterns = ["/.stud/agent/", "/.stud/agents/", "/.opencode/agent/", "/.opencode/agents/", "/agent/", "/agents/"]
       const file = rel(item, patterns) ?? path.basename(item)
       const agentName = trim(file)
 
@@ -1102,6 +1102,9 @@ export namespace Config {
       mergeDeep(await loadFile(path.join(Global.Path.config, "config.json"))),
       mergeDeep(await loadFile(path.join(Global.Path.config, "opencode.json"))),
       mergeDeep(await loadFile(path.join(Global.Path.config, "opencode.jsonc"))),
+      // Load stud.json/stud.jsonc last so they take precedence
+      mergeDeep(await loadFile(path.join(Global.Path.config, "stud.json"))),
+      mergeDeep(await loadFile(path.join(Global.Path.config, "stud.jsonc"))),
     )
 
     await import(path.join(Global.Path.config, "config"), {
@@ -1268,7 +1271,8 @@ export namespace Config {
   }
 
   function globalConfigFile() {
-    const candidates = ["opencode.jsonc", "opencode.json", "config.json"].map((file) =>
+    // Prefer stud.* over opencode.* for new configs
+    const candidates = ["stud.jsonc", "stud.json", "opencode.jsonc", "opencode.json", "config.json"].map((file) =>
       path.join(Global.Path.config, file),
     )
     for (const file of candidates) {

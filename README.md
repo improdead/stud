@@ -13,9 +13,10 @@ AI-powered development tool for Roblox games. Stud connects to Roblox Studio via
 
 This will:
 
-1. Install dependencies
-2. Copy the Studio plugin to your Roblox plugins folder
-3. Start the Stud desktop app
+1. Check and install prerequisites (Bun, Rust, Rojo)
+2. Install dependencies
+3. Copy the Studio plugin to your Roblox plugins folder
+4. Start the Stud desktop app
 
 ### In Roblox Studio
 
@@ -27,7 +28,40 @@ This will:
 
 ## Features
 
-### Studio Tools (13 tools)
+### Instance Tree / Explorer
+
+Visual tree view of your Roblox game hierarchy with:
+
+- **Dual source support**: Fetches from Rojo project files OR live from Roblox Studio
+- **Search functionality**: Filter instances by name or class
+- **Click-to-select**: Syncs selection with Roblox Studio
+- **File paths**: Shows corresponding Luau files for scripts
+
+### Inspector Panel
+
+When you select an instance in the tree:
+
+- **Script preview**: View syntax-highlighted source code
+- **Property inspector**: Live properties fetched from Studio
+- **Quick actions**: Add Script, Insert Model, Edit Properties
+
+### Interactive Asset Picker
+
+When searching the toolbox, results are displayed as clickable thumbnail cards:
+
+- **Visual selection**: See asset thumbnails before inserting
+- **AI recommendations**: Quick-add suggested assets
+- **Batch selection**: Select multiple assets at once
+
+### Integrated Terminal
+
+- Multiple terminal tabs with drag-and-drop reordering
+- Tab renaming, clear, and kill actions
+- Resizable panel
+
+---
+
+## Studio Tools (13 tools)
 
 | Tool                    | Description                     |
 | ----------------------- | ------------------------------- |
@@ -45,7 +79,7 @@ This will:
 | `roblox_get_selection`  | Get currently selected objects  |
 | `roblox_run_code`       | Execute Luau code in Studio     |
 
-### Bulk Operations (3 tools)
+## Bulk Operations (3 tools)
 
 | Tool                       | Description                          |
 | -------------------------- | ------------------------------------ |
@@ -53,7 +87,7 @@ This will:
 | `roblox_bulk_delete`       | Delete multiple instances at once    |
 | `roblox_bulk_set_property` | Set properties on multiple instances |
 
-### Toolbox Tools (3 tools)
+## Toolbox Tools (3 tools)
 
 | Tool                    | Description                    |
 | ----------------------- | ------------------------------ |
@@ -61,9 +95,7 @@ This will:
 | `roblox_asset_details`  | Get details about an asset     |
 | `roblox_insert_asset`   | Insert toolbox asset into game |
 
-**Interactive Asset Selection**: When searching the toolbox, results are displayed as clickable thumbnail cards. Click any asset to automatically insert it into your game - no need to copy/paste asset IDs!
-
-### Cloud API Tools (9 tools)
+## Cloud API Tools (9 tools)
 
 | Tool                                 | Description                                  |
 | ------------------------------------ | -------------------------------------------- |
@@ -78,6 +110,35 @@ This will:
 | `roblox_ordered_datastore_increment` | Increment OrderedDataStore entry             |
 
 **Total: 28 Roblox tools**
+
+---
+
+## Roblox Authentication
+
+For authenticated Toolbox API requests:
+
+1. Go to **Settings > Roblox Account**
+2. Login with your Roblox account
+3. Your session is securely stored and auto-validated
+
+This enables:
+- Access to your own assets
+- Higher API rate limits
+- Authenticated asset details
+
+---
+
+## Project Discovery
+
+Stud automatically detects Roblox projects in your workspace:
+
+| Project Type | Detected By |
+| ------------ | ----------- |
+| Rojo         | `default.project.json`, `*.project.json` |
+| Wally        | `wally.toml` |
+| Place files  | `.rbxl`, `.rbxlx`, `.rbxm` |
+
+Toolchain indicators: `aftman.toml`, `selene.toml`, `.luaurc`
 
 ---
 
@@ -120,6 +181,29 @@ All modifying operations create undo waypoints in Studio:
 
 ---
 
+## SDK
+
+Stud provides a JavaScript/TypeScript SDK for programmatic access:
+
+```typescript
+import { createStud } from "@anthropics/stud-sdk";
+
+// Create client and server
+const stud = await createStud();
+
+// Create a session
+const session = await stud.client.session.create({
+  directory: "/path/to/project"
+});
+
+// Send a prompt
+const response = await stud.client.session.prompt(session.id, {
+  content: "Create a part in Workspace"
+});
+```
+
+---
+
 ## Environment Variables
 
 ### Cloud API (Optional)
@@ -144,6 +228,7 @@ To create an API key:
 
 - [Bun](https://bun.sh/) v1.3.5+
 - [Rust](https://www.rust-lang.org/tools/install) (for Tauri)
+- [Rojo](https://rojo.space/) (optional, for project sync)
 - [Tauri CLI prerequisites](https://tauri.app/start/prerequisites/)
 
 ### Setup
@@ -165,8 +250,8 @@ stud/
 │   ├── app/          # SolidJS UI components
 │   ├── ui/           # Shared UI component library
 │   ├── core/         # AI engine (providers, tools, sessions)
+│   ├── sdk/          # JavaScript/TypeScript SDK
 │   ├── util/         # Shared utilities
-│   ├── plugin/       # Plugin system
 │   └── script/       # Build scripts
 ├── studio-plugin/    # Roblox Studio plugin
 ├── start.sh          # Quick start script
@@ -180,10 +265,13 @@ stud/
 bun run dev
 
 # Build for production
-bun run build
+./start.sh --build
 
 # Type checking
 bun run typecheck
+
+# Check prerequisites only
+./start.sh --check
 ```
 
 ### Manual Plugin Installation

@@ -326,6 +326,11 @@ install_platform_deps() {
 }
 
 check_rojo() {
+    # Ensure cargo bin is in PATH for rojo check
+    if [ -d "$HOME/.cargo/bin" ]; then
+        export PATH="$HOME/.cargo/bin:$PATH"
+    fi
+
     if command -v rojo &> /dev/null; then
         local rojo_version=$(rojo --version 2>/dev/null | cut -d' ' -f2)
         status_ok "Rojo ${rojo_version}"
@@ -338,7 +343,12 @@ check_rojo() {
 
 install_rojo() {
     info "Installing Rojo..."
-    
+
+    # Ensure cargo bin is in PATH
+    if [ -d "$HOME/.cargo/bin" ]; then
+        export PATH="$HOME/.cargo/bin:$PATH"
+    fi
+
     # Try aftman first (Roblox toolchain manager)
     if command -v aftman &> /dev/null; then
         start_spinner "Installing Rojo via Aftman"
@@ -347,8 +357,10 @@ install_rojo() {
     # Try cargo if available
     elif command -v cargo &> /dev/null; then
         start_spinner "Installing Rojo via Cargo"
-        cargo install rojo &>/dev/null
+        cargo install rojo 2>&1 | tail -5 || true
         stop_spinner
+        # Ensure cargo bin is in PATH after install
+        export PATH="$HOME/.cargo/bin:$PATH"
     # Try downloading binary directly
     else
         start_spinner "Downloading Rojo binary"

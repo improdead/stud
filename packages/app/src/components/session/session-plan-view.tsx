@@ -25,8 +25,8 @@ export function SessionPlanView(props: SessionPlanViewProps) {
   const planPath = createMemo(() => {
     const s = session()
     if (!s) return null
-    // Plan path: .opencode/plans/{timestamp}-{slug}.md
-    return `.opencode/plans/${s.time.created}-${s.slug}.md`
+    // Plan path: .stud/plans/{timestamp}-{slug}.md
+    return `.stud/plans/${s.time.created}-${s.slug}.md`
   })
 
   // Check if current agent is plan

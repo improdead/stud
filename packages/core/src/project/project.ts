@@ -62,11 +62,19 @@ export namespace Project {
 
         const gitBinary = Bun.which("git")
 
-        // cached id calculation
-        let id = await Bun.file(path.join(git, "opencode"))
+        // cached id calculation - check .stud first, then fall back to opencode for backwards compat
+        let id = await Bun.file(path.join(git, "stud"))
           .text()
           .then((x) => x.trim())
           .catch(() => undefined)
+
+        // Fallback to legacy opencode file if stud doesn't exist
+        if (!id) {
+          id = await Bun.file(path.join(git, "opencode"))
+            .text()
+            .then((x) => x.trim())
+            .catch(() => undefined)
+        }
 
         if (!gitBinary) {
           return {
@@ -104,7 +112,7 @@ export namespace Project {
 
           id = roots[0]
           if (id) {
-            void Bun.file(path.join(git, "opencode"))
+            void Bun.file(path.join(git, "stud"))
               .write(id)
               .catch(() => undefined)
           }

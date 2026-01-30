@@ -26,6 +26,7 @@ import { EOL } from "os"
 import { WebCommand } from "./cli/cmd/web"
 import { PrCommand } from "./cli/cmd/pr"
 import { SessionCommand } from "./cli/cmd/session"
+import { OpenCodeMigration } from "./migration"
 
 process.on("unhandledRejection", (e) => {
   Log.Default.error("rejection", {
@@ -70,10 +71,13 @@ const cli = yargs(hideBin(process.argv))
     process.env.AGENT = "1"
     process.env.OPENCODE = "1"
 
-    Log.Default.info("opencode", {
+    Log.Default.info("stud", {
       version: Installation.VERSION,
       args: process.argv.slice(2),
     })
+
+    // Run OpenCode migration if needed (silently auto-migrate)
+    await OpenCodeMigration.runIfNeeded()
   })
   .usage("\n" + UI.logo())
   .completion("completion", "generate shell completion script")

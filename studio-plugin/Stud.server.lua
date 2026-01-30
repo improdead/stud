@@ -498,10 +498,15 @@ end
 
 local function getInstanceFromPath(path)
 	local parts = string.split(path, ".")
-	if #parts < 2 or parts[1] ~= "game" then
+	if #parts < 1 or parts[1] ~= "game" then
 		return nil
 	end
-	
+
+	-- Handle path = "game" (return the DataModel directly)
+	if #parts == 1 then
+		return game
+	end
+
 	local current = game
 	for i = 2, #parts do
 		local child = current:FindFirstChild(parts[i])
@@ -510,7 +515,7 @@ local function getInstanceFromPath(path)
 		end
 		current = child
 	end
-	
+
 	return current
 end
 

@@ -1,12 +1,12 @@
-import { createEffect, createMemo, createSignal, Show } from "solid-js"
+import { createEffect, createMemo, createResource, createSignal, For, Show } from "solid-js"
 import { Dynamic } from "solid-js/web"
 import { Button } from "@stud/ui/button"
-import { InlineInput } from "@stud/ui/inline-input"
 import { InstanceIcon } from "@stud/ui/instance-icon"
 import { useCodeComponent } from "@stud/ui/context/code"
 import { usePrompt } from "@/context/prompt"
 import { useInstance } from "@/context/instance"
 import { useFile } from "@/context/file"
+import { studioRequest } from "@/utils/studio"
 
 const SCRIPT_CLASSES = ["Script", "LocalScript", "ModuleScript"]
 
@@ -14,21 +14,52 @@ function isScript(className: string) {
   return SCRIPT_CLASSES.includes(className)
 }
 
-function ScriptPreview(props: { filePath: string; name: string; className: string }) {
+interface PropertyInfo {
+  name: string
+  value: string
+  type: string
+}
+
+function ScriptPreview(props: { filePath?: string; path?: string; name: string; className: string }) {
   const file = useFile()
   const codeComponent = useCodeComponent()
   const [cacheKey, setCacheKey] = createSignal(0)
+  const [studioSource, setStudioSource] = createSignal<string | null>(null)
+  const [loading, setLoading] = createSignal(false)
 
+  // Load from file if filePath exists
   createEffect(() => {
-    file.load(props.filePath)
+    if (props.filePath) {
+      file.load(props.filePath)
+    }
   })
 
-  const fileState = createMemo(() => file.get(props.filePath))
+  // Load from Studio if no filePath but has path
+  createEffect(() => {
+    if (!props.filePath && props.path) {
+      setLoading(true)
+      studioRequest<{ source: string }>("/script/get", { path: props.path })
+        .then((result) => {
+          if (result.success) {
+            setStudioSource(result.data.source)
+          }
+        })
+        .finally(() => setLoading(false))
+    }
+  })
+
+  const fileState = createMemo(() => (props.filePath ? file.get(props.filePath) : null))
   const contents = createMemo(() => {
+    // Prefer file content if available
     const state = fileState()
-    if (!state?.content) return ""
-    if (state.content.type === "text") return state.content.content
-    return ""
+    if (state?.content?.type === "text") return state.content.content
+    // Fall back to studio source
+    return studioSource() ?? ""
+  })
+
+  const isLoading = createMemo(() => {
+    if (props.filePath) return fileState()?.loading ?? false
+    return loading()
   })
 
   createEffect(() => {
@@ -41,20 +72,21 @@ function ScriptPreview(props: { filePath: string; name: string; className: strin
       <div class="flex items-center gap-2 px-4 py-2 border-b border-border-base">
         <InstanceIcon className={props.className} class="size-4 shrink-0" />
         <span class="text-13-medium text-text-strong truncate">{props.name}</span>
+        <span class="text-11-regular text-text-subtle ml-auto">{props.className}</span>
       </div>
       <div class="flex-1 min-h-0 overflow-auto">
         <Show
-          when={!fileState()?.loading && contents()}
+          when={!isLoading() && contents()}
           fallback={
             <div class="px-4 py-3 text-12-regular text-text-weak">
-              {fileState()?.loading ? "Loading..." : "No content"}
+              {isLoading() ? "Loading..." : "No content"}
             </div>
           }
         >
           <Dynamic
             component={codeComponent}
             file={{
-              name: props.filePath,
+              name: props.filePath ?? `${props.name}.lua`,
               contents: contents(),
               cacheKey: `script-preview-${cacheKey()}`,
             }}
@@ -67,38 +99,50 @@ function ScriptPreview(props: { filePath: string; name: string; className: strin
   )
 }
 
+function InstanceProperties(props: { path: string }) {
+  const [properties] = createResource(
+    () => props.path,
+    async (path) => {
+      const result = await studioRequest<PropertyInfo[]>("/instance/properties", { path })
+      if (result.success) return result.data
+      return []
+    },
+  )
+
+  return (
+    <div class="flex flex-col gap-1">
+      <div class="text-12-medium text-text-subtle pb-1">Properties</div>
+      <Show
+        when={!properties.loading}
+        fallback={<div class="text-12-regular text-text-weak">Loading...</div>}
+      >
+        <Show when={properties()?.length} fallback={<div class="text-12-regular text-text-weak">No properties available</div>}>
+          <div class="flex flex-col gap-0.5">
+            <For each={properties()}>
+              {(prop) => (
+                <div class="flex items-center gap-2 py-1 px-2 rounded hover:bg-fill-ghost-hover">
+                  <span class="text-12-regular text-text-base flex-1 truncate">{prop.name}</span>
+                  <span class="text-12-regular text-text-strong truncate max-w-[120px]" title={prop.value}>
+                    {prop.value}
+                  </span>
+                  <span class="text-11-regular text-text-subtle">{prop.type}</span>
+                </div>
+              )}
+            </For>
+          </div>
+        </Show>
+      </Show>
+    </div>
+  )
+}
+
 function InstanceInspector() {
   const prompt = usePrompt()
   const instance = useInstance()
   const selection = createMemo(() => instance.selected())
 
-  const [name, setName] = createSignal("")
-  const [color, setColor] = createSignal("")
-  const [size, setSize] = createSignal("")
-
   const setPrompt = (text: string) => {
     prompt.set([{ type: "text", content: text, start: 0, end: text.length }], text.length)
-  }
-
-  const applyRename = () => {
-    const target = selection()?.path
-    const next = name().trim()
-    if (!target || !next) return
-    setPrompt(`Rename ${target} to ${next}.`)
-  }
-
-  const applyColor = () => {
-    const target = selection()?.path
-    const next = color().trim()
-    if (!target || !next) return
-    setPrompt(`Set ${target} Color to ${next}.`)
-  }
-
-  const applySize = () => {
-    const target = selection()?.path
-    const next = size().trim()
-    if (!target || !next) return
-    setPrompt(`Set ${target} Size to ${next}.`)
   }
 
   const addScript = () => {
@@ -113,11 +157,11 @@ function InstanceInspector() {
 
   const editProps = () => {
     const target = selection()?.path ?? "the selected instance"
-    setPrompt(`Update properties on ${target} (color, size, material).`)
+    setPrompt(`Update properties on ${target}.`)
   }
 
   return (
-    <div class="flex flex-col gap-4 px-4 py-3">
+    <div class="flex flex-col gap-4 px-4 py-3 overflow-auto h-full">
       <Show
         when={selection()}
         fallback={<div class="text-13-regular text-text-weak">Select an instance to inspect.</div>}
@@ -125,13 +169,15 @@ function InstanceInspector() {
         {(item) => (
           <>
             <div class="flex flex-col gap-1">
-              <div class="text-12-regular text-text-weak">Selected</div>
-              <div class="text-14-medium text-text-strong truncate">{item().name}</div>
-              <div class="text-12-regular text-text-weak truncate">{item().className}</div>
-              <div class="text-12-regular text-text-weak truncate">{item().path}</div>
+              <div class="flex items-center gap-2">
+                <InstanceIcon className={item().className} class="size-5 shrink-0" />
+                <div class="text-14-medium text-text-strong truncate">{item().name}</div>
+              </div>
+              <div class="text-12-regular text-text-subtle truncate">{item().className}</div>
+              <div class="text-11-regular text-text-weak truncate">{item().path}</div>
             </div>
 
-            <div class="flex flex-col gap-3">
+            <div class="flex flex-col gap-2">
               <div class="text-12-medium text-text-subtle">Quick Actions</div>
               <div class="flex flex-wrap gap-2">
                 <Button variant="ghost" size="small" onClick={addScript}>
@@ -141,66 +187,12 @@ function InstanceInspector() {
                   Insert Model
                 </Button>
                 <Button variant="ghost" size="small" onClick={editProps}>
-                  Properties
+                  Edit Properties
                 </Button>
               </div>
             </div>
 
-            <div class="flex flex-col gap-3">
-              <div class="text-12-medium text-text-subtle">Quick Edits</div>
-              <div class="flex flex-col gap-2">
-                <label class="text-12-regular text-text-weak">Rename</label>
-                <div class="flex items-center gap-2">
-                  <InlineInput
-                    value={name()}
-                    placeholder="New name"
-                    onInput={(event) => setName(event.currentTarget.value)}
-                    onKeyDown={(event) => {
-                      if (event.key !== "Enter") return
-                      applyRename()
-                    }}
-                    class="w-full"
-                  />
-                  <Button variant="secondary" size="small" onClick={applyRename}>
-                    Apply
-                  </Button>
-                </div>
-
-                <label class="text-12-regular text-text-weak">Color (RGB or hex)</label>
-                <div class="flex items-center gap-2">
-                  <InlineInput
-                    value={color()}
-                    placeholder="#FF8800 or 255,128,0"
-                    onInput={(event) => setColor(event.currentTarget.value)}
-                    onKeyDown={(event) => {
-                      if (event.key !== "Enter") return
-                      applyColor()
-                    }}
-                    class="w-full"
-                  />
-                  <Button variant="secondary" size="small" onClick={applyColor}>
-                    Apply
-                  </Button>
-                </div>
-
-                <label class="text-12-regular text-text-weak">Size (Vector3)</label>
-                <div class="flex items-center gap-2">
-                  <InlineInput
-                    value={size()}
-                    placeholder="4, 2, 1"
-                    onInput={(event) => setSize(event.currentTarget.value)}
-                    onKeyDown={(event) => {
-                      if (event.key !== "Enter") return
-                      applySize()
-                    }}
-                    class="w-full"
-                  />
-                  <Button variant="secondary" size="small" onClick={applySize}>
-                    Apply
-                  </Button>
-                </div>
-              </div>
-            </div>
+            <InstanceProperties path={item().path} />
           </>
         )}
       </Show>
@@ -215,14 +207,20 @@ export function SessionInspectorTab() {
   const scriptSelection = createMemo(() => {
     const sel = selection()
     if (!sel) return null
-    if (!sel.filePath) return null
     if (!isScript(sel.className)) return null
     return sel
   })
 
   return (
     <Show when={scriptSelection()} fallback={<InstanceInspector />}>
-      {(script) => <ScriptPreview filePath={script().filePath!} name={script().name} className={script().className} />}
+      {(script) => (
+        <ScriptPreview
+          filePath={script().filePath}
+          path={script().path}
+          name={script().name}
+          className={script().className}
+        />
+      )}
     </Show>
   )
 }

@@ -38,7 +38,7 @@ local toolbar = plugin:CreateToolbar(PLUGIN_NAME)
 local toggleButton = toolbar:CreateButton(
 	"Stud",
 	"Connect to Stud AI",
-	"rbxassetid://4458901886"
+	"rbxassetid://76982432645397"
 )
 
 -- Colors (modern dark theme)

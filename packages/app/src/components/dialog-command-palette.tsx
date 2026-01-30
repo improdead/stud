@@ -1,80 +1,120 @@
 import { Dialog } from "@stud/ui/dialog"
-import { List } from "@stud/ui/list"
 import { Icon } from "@stud/ui/icon"
 import { Keybind } from "@stud/ui/keybind"
-import { createMemo, Show } from "solid-js"
-import { useCommand, type CommandOption } from "@/context/command"
+import { createSignal, For, Show } from "solid-js"
+import { type CommandOption } from "@/context/command"
 import { useDialog } from "@stud/ui/context/dialog"
-import { useLanguage } from "@/context/language"
 
 type Entry = {
   id: string
   title: string
   description?: string
-  category?: string
   keybind?: string
   option: CommandOption
 }
 
-export function DialogCommandPalette() {
-  const command = useCommand()
-  const dialog = useDialog()
-  const language = useLanguage()
+interface Props {
+  options: CommandOption[]
+  keybind: (id: string) => string
+}
 
-  const entries = createMemo<Entry[]>(() => {
-    return command.options
+export function DialogCommandPalette(props: Props) {
+  const dialog = useDialog()
+  const [query, setQuery] = createSignal("")
+  const [activeIndex, setActiveIndex] = createSignal(0)
+
+  const entries = () => {
+    const q = query().toLowerCase()
+    return props.options
       .filter((item) => !item.disabled)
+      .filter((item) => {
+        if (!q) return true
+        return (
+          item.title.toLowerCase().includes(q) ||
+          item.description?.toLowerCase().includes(q)
+        )
+      })
       .map((item) => ({
         id: item.id,
         title: item.title,
         description: item.description,
-        category: item.category ?? language.t("palette.group.commands"),
-        keybind: (() => {
-          const key = command.keybind(item.id)
-          if (!key) return undefined
-          return key
-        })(),
+        keybind: props.keybind(item.id) || undefined,
         option: item,
       }))
-  })
+  }
 
-  const select = (item: Entry | undefined) => {
-    if (!item) return
+  const select = (item: Entry) => {
     dialog.close()
     item.option.onSelect?.("palette")
   }
 
+  const handleKeyDown = (e: KeyboardEvent) => {
+    const items = entries()
+    if (e.key === "ArrowDown") {
+      e.preventDefault()
+      setActiveIndex((i) => Math.min(i + 1, items.length - 1))
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault()
+      setActiveIndex((i) => Math.max(i - 1, 0))
+    } else if (e.key === "Enter" && items.length > 0) {
+      e.preventDefault()
+      select(items[activeIndex()])
+    }
+  }
+
   return (
-    <Dialog title={language.t("command.palette")} class="w-[560px] max-w-[90vw]" fit transition>
-      <div class="px-4 pb-4">
-        <List
-          items={entries()}
-          key={(item) => item.id}
-          groupBy={(item) => item.category ?? ""}
-          filterKeys={["title", "description", "category"]}
-          onSelect={select}
-          search={{ placeholder: "Search commands…", autofocus: true }}
-          divider
-        >
-          {(item) => (
-            <div class="flex items-center gap-3 min-w-0">
-              <div class="size-8 rounded-md border border-border-weak-base bg-surface-base flex items-center justify-center">
-                <Icon name="dot-grid" size="small" />
-              </div>
-              <div class="flex flex-col gap-1 min-w-0 flex-1">
-                <span class="text-13-medium text-text-strong truncate">{item.title}</span>
-                <span class="text-12-regular text-text-weak truncate">{item.description}</span>
-              </div>
-              <Show when={item.keybind}>
-                {(key) => (
-                  <div class="shrink-0">
-                    <Keybind>{key()}</Keybind>
-                  </div>
-                )}
-              </Show>
-            </div>
-          )}
-        </List>
+    <Dialog class="w-[600px] max-w-[90vw]" fit transition>
+      <div class="flex flex-col">
+        {/* Search input */}
+        <div class="flex items-center gap-3 px-4 py-3 border-b border-border-base">
+          <Icon name="magnifying-glass" class="text-text-dimmed shrink-0" />
+          <input
+            type="text"
+            placeholder="Search threads..."
+            class="flex-1 bg-transparent text-14-regular text-text-strong placeholder:text-text-dimmed outline-none"
+            value={query()}
+            onInput={(e) => {
+              setQuery(e.currentTarget.value)
+              setActiveIndex(0)
+            }}
+            onKeyDown={handleKeyDown}
+            autofocus
+          />
+          <Keybind>⌘K</Keybind>
+        </div>
+
+        {/* Results */}
+        <Show when={entries().length > 0}>
+          <div class="max-h-[300px] overflow-y-auto py-2">
+            <For each={entries()}>
+              {(item, index) => (
+                <button
+                  type="button"
+                  class="w-full px-4 py-2 flex items-center gap-3 text-left hover:bg-surface-hover transition-colors"
+                  classList={{
+                    "bg-surface-hover": index() === activeIndex(),
+                  }}
+                  onClick={() => select(item)}
+                  onMouseEnter={() => setActiveIndex(index())}
+                >
+                  <span class="text-14-regular text-text-strong truncate flex-1">
+                    {item.title}
+                  </span>
+                  <Show when={item.keybind}>
+                    {(key) => <Keybind>{key()}</Keybind>}
+                  </Show>
+                </button>
+              )}
+            </For>
+          </div>
+        </Show>
+
+        {/* Empty state */}
+        <Show when={query() && entries().length === 0}>
+          <div class="px-4 py-8 text-center text-14-regular text-text-dimmed">
+            No results found
+          </div>
+        </Show>
       </div>
     </Dialog>
   )

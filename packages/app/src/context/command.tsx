@@ -268,8 +268,23 @@ export const { use: useCommand, provider: CommandProvider } = createSimpleContex
       }
     }
 
+    const keybind = (id: string) => {
+      if (id === PALETTE_ID) {
+        return formatKeybind(settings.keybinds.get(PALETTE_ID) ?? DEFAULT_PALETTE_KEYBIND)
+      }
+
+      const base = actionId(id)
+      const option = options().find((x) => actionId(x.id) === base)
+      if (option?.keybind) return formatKeybind(option.keybind)
+
+      const meta = catalog[base]
+      const config = bind(base, meta?.keybind)
+      if (!config) return ""
+      return formatKeybind(config)
+    }
+
     const showPalette = () => {
-      dialog.show(() => <DialogCommandPalette />)
+      dialog.show(() => <DialogCommandPalette options={options()} keybind={keybind} />)
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -308,20 +323,7 @@ export const { use: useCommand, provider: CommandProvider } = createSimpleContex
       trigger(id: string, source?: "palette" | "keybind" | "slash") {
         run(id, source)
       },
-      keybind(id: string) {
-        if (id === PALETTE_ID) {
-          return formatKeybind(settings.keybinds.get(PALETTE_ID) ?? DEFAULT_PALETTE_KEYBIND)
-        }
-
-        const base = actionId(id)
-        const option = options().find((x) => actionId(x.id) === base)
-        if (option?.keybind) return formatKeybind(option.keybind)
-
-        const meta = catalog[base]
-        const config = bind(base, meta?.keybind)
-        if (!config) return ""
-        return formatKeybind(config)
-      },
+      keybind,
       show: showPalette,
       keybinds(enabled: boolean) {
         setStore("suspendCount", (count) => count + (enabled ? -1 : 1))

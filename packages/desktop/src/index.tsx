@@ -261,11 +261,18 @@ const createPlatform = (password: Accessor<string | null>): Platform => ({
   },
 
   restart: async () => {
-    await invoke("kill_sidecar").catch(() => undefined)
-    await relaunch().catch(() => {
-      // Fallback to page reload if relaunch fails
+    console.log("[Stud Restart] Starting restart...")
+    try {
+      console.log("[Stud Restart] Killing sidecar...")
+      await invoke("kill_sidecar").catch((e) => console.error("[Stud Restart] kill_sidecar failed:", e))
+      console.log("[Stud Restart] Sidecar killed, calling relaunch...")
+      await relaunch()
+      console.log("[Stud Restart] Relaunch called (this shouldn't appear)")
+    } catch (e) {
+      console.error("[Stud Restart] Relaunch failed:", e)
+      console.log("[Stud Restart] Falling back to page reload...")
       window.location.reload()
-    })
+    }
   },
 
   notify: async (title, description, href) => {
@@ -336,7 +343,10 @@ const createPlatform = (password: Accessor<string | null>): Platform => ({
 
 createMenu()
 
+console.log("[Stud Desktop] Starting render...")
+
 render(() => {
+  console.log("[Stud Desktop] Render function called")
   const [serverPassword, setServerPassword] = createSignal<string | null>(null)
   const platform = createPlatform(() => serverPassword())
 
@@ -349,6 +359,7 @@ render(() => {
   }
 
   onMount(() => {
+    console.log("[Stud Desktop] onMount called")
     document.addEventListener("click", handleClick)
     onCleanup(() => {
       document.removeEventListener("click", handleClick)
@@ -360,6 +371,7 @@ render(() => {
       <AppBaseProviders>
         <ServerGate>
           {(data) => {
+            console.log("[Stud Desktop] ServerGate children rendered with data:", data())
             setServerPassword(data().password)
             window.__STUD__ ??= {}
             window.__STUD__.serverPassword = data().password ?? undefined
@@ -380,11 +392,25 @@ type ServerReadyData = { url: string; password: string | null }
 
 // Gate component that waits for the server to be ready
 function ServerGate(props: { children: (data: Accessor<ServerReadyData>) => JSX.Element }) {
-  const [serverData] = createResource<ServerReadyData>(() =>
-    invoke("ensure_server_ready").then((v) => {
-      return new Promise((res) => setTimeout(() => res(v as ServerReadyData), 2000))
-    }),
-  )
+  console.log("[Stud ServerGate] Initializing...")
+
+  const [serverData] = createResource<ServerReadyData>(() => {
+    console.log("[Stud ServerGate] Calling ensure_server_ready...")
+    return invoke<ServerReadyData>("ensure_server_ready")
+      .then((v) => {
+        console.log("[Stud ServerGate] Server ready, waiting 2s:", v)
+        return new Promise<ServerReadyData>((res) =>
+          setTimeout(() => {
+            console.log("[Stud ServerGate] 2s delay complete, resolving")
+            res(v)
+          }, 2000),
+        )
+      })
+      .catch((e) => {
+        console.error("[Stud ServerGate] ensure_server_ready failed:", e)
+        throw e
+      })
+  })
 
   const errorMessage = () => {
     const error = serverData.error
@@ -395,9 +421,13 @@ function ServerGate(props: { children: (data: Accessor<ServerReadyData>) => JSX.
   }
 
   const restartApp = async () => {
+    console.log("[Stud ServerGate] Restart button clicked")
     await invoke("kill_sidecar").catch(() => undefined)
     await relaunch().catch(() => undefined)
   }
+
+  // Log state changes
+  console.log("[Stud ServerGate] Current state:", serverData.state)
 
   return (
     // Not using suspense as not all components are compatible with it (undefined refs)
@@ -405,10 +435,11 @@ function ServerGate(props: { children: (data: Accessor<ServerReadyData>) => JSX.
       when={serverData.state === "errored"}
       fallback={
         <Show
-          when={serverData.state !== "pending" && serverData()}
+          when={serverData.state === "ready" && serverData()}
           fallback={
             <div class="h-screen w-screen flex flex-col items-center justify-center bg-background-base">
               <Splash class="w-16 h-20 opacity-50 animate-pulse" />
+              <div class="mt-4 text-11-regular text-text-weak">Loading... (check console for logs)</div>
               <div data-tauri-decorum-tb class="flex flex-row absolute top-0 right-0 z-10 h-10" />
             </div>
           }

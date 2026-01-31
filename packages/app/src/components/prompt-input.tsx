@@ -512,9 +512,15 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
           ]
         : []
 
+      // Deduplicate by path
+      const seenPaths = new Set<string>(selected ? [selected.path] : [])
       const instanceOptions: AtOption[] = searchResult.success
         ? searchResult.data
-            .filter((inst) => inst.path !== selected?.path)
+            .filter((inst) => {
+              if (seenPaths.has(inst.path)) return false
+              seenPaths.add(inst.path)
+              return true
+            })
             .map((inst) => ({
               type: "instance",
               path: inst.path,
@@ -1739,7 +1745,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                   {(item) => (
                     <button
                       classList={{
-                        "w-full flex items-start gap-x-2 rounded-md px-2 py-1.5 text-left": true,
+                        "w-full flex items-center gap-x-2 rounded-md px-2 py-1": true,
                         "bg-surface-raised-base-hover": atActive() === atKey(item),
                       }}
                       onClick={() => handleAtSelect(item)}
@@ -1751,16 +1757,11 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                           <>
                             <InstanceIcon
                               className={(item as { className: string }).className}
-                              class="shrink-0 size-4 mt-0.5"
+                              class="shrink-0 size-4"
                             />
-                            <div class="flex flex-col min-w-0 flex-1 text-left">
-                              <span class="text-14-regular text-text-strong truncate">
-                                {(item as { name: string }).name}
-                              </span>
-                              <span class="text-11-regular text-text-subtle truncate opacity-60">
-                                {(item as { path: string }).path}
-                              </span>
-                            </div>
+                            <span class="text-14-regular text-text-strong truncate min-w-0">
+                              {(item as { path: string }).path}
+                            </span>
                           </>
                         }
                       >

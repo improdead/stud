@@ -900,7 +900,9 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       const isText = node.nodeType === Node.TEXT_NODE
       const isPill =
         node.nodeType === Node.ELEMENT_NODE &&
-        ((node as HTMLElement).dataset.type === "file" || (node as HTMLElement).dataset.type === "agent")
+        ((node as HTMLElement).dataset.type === "file" ||
+          (node as HTMLElement).dataset.type === "agent" ||
+          (node as HTMLElement).dataset.type === "instance")
       const isBreak = node.nodeType === Node.ELEMENT_NODE && (node as HTMLElement).tagName === "BR"
 
       if (isText && remaining <= length) {
@@ -931,7 +933,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     const textBeforeCursor = rawText.substring(0, cursorPosition)
     const atMatch = textBeforeCursor.match(/@(\S*)$/)
 
-    if (part.type === "file" || part.type === "agent") {
+    if (part.type === "file" || part.type === "agent" || part.type === "instance") {
       const pill = createPill(part)
       const gap = document.createTextNode(" ")
       const range = selection.getRangeAt(0)
@@ -1751,22 +1753,15 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                               className={(item as { className: string }).className}
                               class="shrink-0 size-4"
                             />
-                            <div class="flex items-center gap-1 min-w-0 truncate">
-                              <span class="text-14-regular text-text-strong whitespace-nowrap">
+                            <div class="flex flex-col min-w-0 flex-1">
+                              <span class="text-14-regular text-text-strong whitespace-nowrap truncate">
                                 {(item as { name: string }).name}
                               </span>
-                              <span class="text-12-regular text-text-subtle whitespace-nowrap truncate">
-                                {(() => {
-                                  const path = (item as { path: string }).path
-                                  const parts = path.split(".")
-                                  if (parts.length > 2) {
-                                    return `in ${parts[parts.length - 2]}`
-                                  }
-                                  return ""
-                                })()}
+                              <span class="text-11-regular text-text-subtle whitespace-nowrap truncate">
+                                {(item as { path: string }).path}
                               </span>
                             </div>
-                            <span class="text-12-regular text-text-subtle whitespace-nowrap ml-auto pl-2">
+                            <span class="text-12-regular text-text-subtle whitespace-nowrap shrink-0">
                               {(item as { className: string }).className}
                             </span>
                           </>

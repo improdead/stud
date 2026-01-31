@@ -1737,7 +1737,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                   {(item) => (
                     <button
                       classList={{
-                        "w-full flex items-center gap-x-2 rounded-md px-2 py-0.5": true,
+                        "w-full flex items-center gap-x-2 rounded-md px-2 py-1.5": true,
                         "bg-surface-raised-base-hover": atActive() === atKey(item),
                       }}
                       onClick={() => handleAtSelect(item)}
@@ -1751,14 +1751,12 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                               className={(item as { className: string }).className}
                               class="shrink-0 size-4"
                             />
-                            <div class="flex flex-col text-14-regular min-w-0">
-                              <span class="text-text-strong whitespace-nowrap truncate">
-                                {(item as { name: string }).name}
-                              </span>
-                              <span class="text-text-subtle text-12-regular whitespace-nowrap truncate">
-                                {(item as { path: string }).path}
-                              </span>
-                            </div>
+                            <span class="text-14-regular text-text-strong whitespace-nowrap truncate min-w-0">
+                              {(item as { name: string }).name}
+                            </span>
+                            <span class="text-12-regular text-text-subtle whitespace-nowrap ml-auto">
+                              {(item as { className: string }).className}
+                            </span>
                           </>
                         }
                       >

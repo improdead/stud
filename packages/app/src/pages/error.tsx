@@ -228,6 +228,18 @@ export const ErrorPage: Component<ErrorPageProps> = (props) => {
     await platform.restart()
   }
 
+  async function handleRestart() {
+    try {
+      console.log("[ErrorPage] Restart button clicked")
+      await platform.restart()
+      console.log("[ErrorPage] Restart completed (this shouldn't appear)")
+    } catch (e) {
+      console.error("[ErrorPage] Restart failed:", e)
+      // Fallback to hard reload
+      window.location.reload()
+    }
+  }
+
   return (
     <div class="relative flex-1 h-screen w-screen min-h-0 flex flex-col items-center justify-center bg-background-base font-sans">
       <div class="w-2/3 max-w-3xl flex flex-col items-center justify-center gap-8">
@@ -246,7 +258,7 @@ export const ErrorPage: Component<ErrorPageProps> = (props) => {
           hideLabel
         />
         <div class="flex items-center gap-3">
-          <Button size="large" onClick={platform.restart}>
+          <Button size="large" onClick={handleRestart}>
             {language.t("error.page.action.restart")}
           </Button>
           <Show when={platform.checkUpdate}>

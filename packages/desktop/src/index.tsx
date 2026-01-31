@@ -9,7 +9,7 @@ import { check, Update } from "@tauri-apps/plugin-updater"
 import { invoke } from "@tauri-apps/api/core"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import { isPermissionGranted, requestPermission } from "@tauri-apps/plugin-notification"
-import { relaunch } from "@tauri-apps/plugin-process"
+import { relaunch, exit } from "@tauri-apps/plugin-process"
 import { AsyncStorage } from "@solid-primitives/storage"
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http"
 import { Store } from "@tauri-apps/plugin-store"
@@ -266,7 +266,15 @@ const createPlatform = (password: Accessor<string | null>): Platform => ({
       console.log("[Stud Restart] Killing sidecar...")
       await invoke("kill_sidecar").catch((e) => console.error("[Stud Restart] kill_sidecar failed:", e))
       console.log("[Stud Restart] Sidecar killed, calling relaunch...")
+
+      // Set a timeout - if relaunch doesn't exit the app within 2 seconds, force exit
+      const timeout = setTimeout(async () => {
+        console.log("[Stud Restart] Relaunch timeout - forcing exit...")
+        await exit(0).catch(() => window.location.reload())
+      }, 2000)
+
       await relaunch()
+      clearTimeout(timeout)
       console.log("[Stud Restart] Relaunch called (this shouldn't appear)")
     } catch (e) {
       console.error("[Stud Restart] Relaunch failed:", e)

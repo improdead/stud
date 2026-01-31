@@ -16,7 +16,7 @@ import { DialogDeleteSession } from "@/components/dialog-delete-session"
 import type { Session } from "@stud/sdk/v2/client"
 
 interface SessionLeftSidebarProps {
-  width: number
+  width: () => number
   onResize: (width: number) => void
 }
 
@@ -117,7 +117,7 @@ export function SessionLeftSidebar(props: SessionLeftSidebarProps) {
     e.preventDefault()
     setDragging("side")
     const startX = e.clientX
-    const startWidth = props.width
+    const startWidth = props.width()
 
     const onMouseMove = (moveEvent: MouseEvent) => {
       const delta = moveEvent.clientX - startX
@@ -139,14 +139,19 @@ export function SessionLeftSidebar(props: SessionLeftSidebarProps) {
     document.addEventListener("mouseup", onMouseUp)
   }
 
+  const width = () => `${props.width()}px`
+
   return (
-    <Motion.div
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.3, easing: [0.22, 1, 0.36, 1] }}
+    <div
       class="relative flex flex-col h-full bg-background-base shrink-0"
-      style={{ width: `${props.width}px`, "min-width": "200px", "max-width": "400px" }}
+      style={{ width: width(), "min-width": "200px", "max-width": "400px" }}
     >
+      <Motion.div
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.3, easing: [0.22, 1, 0.36, 1] }}
+        class="flex flex-col h-full"
+      >
       {/* Navigation */}
       <div class="flex flex-col px-2 pt-3 pb-2 gap-0.5">
         <Motion.button
@@ -310,6 +315,7 @@ export function SessionLeftSidebar(props: SessionLeftSidebarProps) {
           />
         </Tooltip>
       </Motion.div>
+      </Motion.div>
 
       {/* Resize Handle */}
       <div class="absolute inset-y-0 right-0 w-2 cursor-col-resize group" onMouseDown={handleSidebarResizeStart}>
@@ -318,6 +324,6 @@ export function SessionLeftSidebar(props: SessionLeftSidebarProps) {
           classList={{ "opacity-100": dragging() === "side", "opacity-0": dragging() !== "side" }}
         />
       </div>
-    </Motion.div>
+    </div>
   )
 }

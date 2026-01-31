@@ -1751,10 +1751,22 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                               className={(item as { className: string }).className}
                               class="shrink-0 size-4"
                             />
-                            <span class="text-14-regular text-text-strong whitespace-nowrap truncate min-w-0">
-                              {(item as { name: string }).name}
-                            </span>
-                            <span class="text-12-regular text-text-subtle whitespace-nowrap ml-auto">
+                            <div class="flex items-center gap-1 min-w-0 truncate">
+                              <span class="text-14-regular text-text-strong whitespace-nowrap">
+                                {(item as { name: string }).name}
+                              </span>
+                              <span class="text-12-regular text-text-subtle whitespace-nowrap truncate">
+                                {(() => {
+                                  const path = (item as { path: string }).path
+                                  const parts = path.split(".")
+                                  if (parts.length > 2) {
+                                    return `in ${parts[parts.length - 2]}`
+                                  }
+                                  return ""
+                                })()}
+                              </span>
+                            </div>
+                            <span class="text-12-regular text-text-subtle whitespace-nowrap ml-auto pl-2">
                               {(item as { className: string }).className}
                             </span>
                           </>
@@ -1967,6 +1979,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
               "w-full p-3 pr-12 text-14-regular text-text-strong focus:outline-none whitespace-pre-wrap": true,
               "[&_[data-type=file]]:text-syntax-property": true,
               "[&_[data-type=agent]]:text-syntax-type": true,
+              "[&_[data-type=instance]]:text-syntax-class": true,
               "font-mono!": store.mode === "shell",
             }}
           />

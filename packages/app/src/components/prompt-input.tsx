@@ -1739,7 +1739,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                   {(item) => (
                     <button
                       classList={{
-                        "w-full flex items-center gap-x-2 rounded-md px-2 py-1.5": true,
+                        "w-full flex items-start gap-x-2 rounded-md px-2 py-1.5 text-left": true,
                         "bg-surface-raised-base-hover": atActive() === atKey(item),
                       }}
                       onClick={() => handleAtSelect(item)}
@@ -1751,19 +1751,16 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                           <>
                             <InstanceIcon
                               className={(item as { className: string }).className}
-                              class="shrink-0 size-4"
+                              class="shrink-0 size-4 mt-0.5"
                             />
-                            <div class="flex flex-col min-w-0 flex-1">
-                              <span class="text-14-regular text-text-strong whitespace-nowrap truncate">
+                            <div class="flex flex-col min-w-0 flex-1 text-left">
+                              <span class="text-14-regular text-text-strong truncate">
                                 {(item as { name: string }).name}
                               </span>
-                              <span class="text-11-regular text-text-subtle whitespace-nowrap truncate">
+                              <span class="text-11-regular text-text-subtle truncate opacity-60">
                                 {(item as { path: string }).path}
                               </span>
                             </div>
-                            <span class="text-12-regular text-text-subtle whitespace-nowrap shrink-0">
-                              {(item as { className: string }).className}
-                            </span>
                           </>
                         }
                       >
@@ -1974,7 +1971,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
               "w-full p-3 pr-12 text-14-regular text-text-strong focus:outline-none whitespace-pre-wrap": true,
               "[&_[data-type=file]]:text-syntax-property": true,
               "[&_[data-type=agent]]:text-syntax-type": true,
-              "[&_[data-type=instance]]:text-syntax-class": true,
+              "[&_[data-type=instance]]:text-syntax-property": true,
               "font-mono!": store.mode === "shell",
             }}
           />

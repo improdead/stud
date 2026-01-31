@@ -402,6 +402,8 @@ type ServerReadyData = { url: string; password: string | null }
 function ServerGate(props: { children: (data: Accessor<ServerReadyData>) => JSX.Element }) {
   console.log("[Stud ServerGate] Initializing...")
 
+  const [restarting, setRestarting] = createSignal(false)
+
   const [serverData] = createResource<ServerReadyData>(() => {
     console.log("[Stud ServerGate] Calling ensure_server_ready...")
     return invoke<ServerReadyData>("ensure_server_ready")
@@ -430,8 +432,23 @@ function ServerGate(props: { children: (data: Accessor<ServerReadyData>) => JSX.
 
   const restartApp = async () => {
     console.log("[Stud ServerGate] Restart button clicked")
-    await invoke("kill_sidecar").catch(() => undefined)
-    await relaunch().catch(() => undefined)
+    setRestarting(true)
+    try {
+      await invoke("kill_sidecar").catch((e) => console.error("[Stud ServerGate] kill_sidecar failed:", e))
+
+      // Set a timeout - if relaunch doesn't exit the app within 2 seconds, force exit
+      const timeout = setTimeout(async () => {
+        console.log("[Stud ServerGate] Relaunch timeout - forcing exit...")
+        await exit(0).catch(() => window.location.reload())
+      }, 2000)
+
+      await relaunch()
+      clearTimeout(timeout)
+    } catch (e) {
+      console.error("[Stud ServerGate] Relaunch failed:", e)
+      setRestarting(false)
+      window.location.reload()
+    }
   }
 
   // Log state changes
@@ -456,20 +473,31 @@ function ServerGate(props: { children: (data: Accessor<ServerReadyData>) => JSX.
         </Show>
       }
     >
-      <div class="h-screen w-screen flex flex-col items-center justify-center bg-background-base gap-4 px-6">
-        <div class="text-16-semibold">Stud failed to start</div>
-        <div class="text-12-regular opacity-70 text-center max-w-xl">
-          The local Stud server could not be started. Restart the app, or check your network settings (VPN/proxy) and
-          try again.
+      <Show
+        when={!restarting()}
+        fallback={
+          <div class="h-screen w-screen flex flex-col items-center justify-center bg-background-base">
+            <Splash class="w-16 h-20 opacity-50 animate-pulse" />
+            <div class="mt-4 text-11-regular text-text-weak">Restarting...</div>
+            <div data-tauri-decorum-tb class="flex flex-row absolute top-0 right-0 z-10 h-10" />
+          </div>
+        }
+      >
+        <div class="h-screen w-screen flex flex-col items-center justify-center bg-background-base gap-4 px-6">
+          <div class="text-16-semibold">Stud failed to start</div>
+          <div class="text-12-regular opacity-70 text-center max-w-xl">
+            The local Stud server could not be started. Restart the app, or check your network settings (VPN/proxy) and
+            try again.
+          </div>
+          <div class="w-full max-w-3xl rounded border border-border bg-background-base overflow-auto max-h-64">
+            <pre class="p-3 whitespace-pre-wrap break-words text-11-regular">{errorMessage()}</pre>
+          </div>
+          <button class="px-3 py-2 rounded bg-primary text-primary-foreground" onClick={() => void restartApp()}>
+            Restart App
+          </button>
+          <div data-tauri-decorum-tb class="flex flex-row absolute top-0 right-0 z-10 h-10" />
         </div>
-        <div class="w-full max-w-3xl rounded border border-border bg-background-base overflow-auto max-h-64">
-          <pre class="p-3 whitespace-pre-wrap break-words text-11-regular">{errorMessage()}</pre>
-        </div>
-        <button class="px-3 py-2 rounded bg-primary text-primary-foreground" onClick={() => void restartApp()}>
-          Restart App
-        </button>
-        <div data-tauri-decorum-tb class="flex flex-row absolute top-0 right-0 z-10 h-10" />
-      </div>
+      </Show>
     </Show>
   )
 }

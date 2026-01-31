@@ -99,27 +99,6 @@ export function SessionHeader() {
                     </div>
                   </Button>
                 </Tooltip>
-                <Tooltip value={language.t("planningMode.toggle")} placement="bottom">
-                  <Button
-                    variant="ghost"
-                    class="size-6 p-0"
-                    classList={{
-                      "bg-white/10": layout.planningMode.enabled(),
-                    }}
-                    onClick={() => layout.planningMode.toggle()}
-                    aria-label={language.t("planningMode.toggle")}
-                    aria-pressed={layout.planningMode.enabled()}
-                  >
-                    <Icon
-                      size="small"
-                      name="checklist"
-                      classList={{
-                        "text-text-strong": layout.planningMode.enabled(),
-                        "text-icon-base": !layout.planningMode.enabled(),
-                      }}
-                    />
-                  </Button>
-                </Tooltip>
                 <TooltipKeybind
                   title={language.t("command.terminal.toggle")}
                   keybind={command.keybind("terminal.toggle")}

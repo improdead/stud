@@ -14,29 +14,40 @@ export const { use: useInstance, provider: InstanceProvider } = createSimpleCont
   name: "Instance",
   init: () => {
     const [store, setStore] = createStore({
-      selected: null as InstanceSelection | null,
+      // Visual highlight in Explorer (can be overwritten by Studio polling)
+      highlighted: null as InstanceSelection | null,
+      // Pinned selection for Inspector (user-controlled, only changes on double-click)
+      inspected: null as InstanceSelection | null,
     })
 
-    const setSelected = (next: InstanceSelection | null) => {
-      const current = store.selected
-      if (!next && !current) return
-      const same =
-        next &&
-        current &&
-        next.path === current.path &&
-        next.name === current.name &&
-        next.className === current.className &&
-        next.filePath === current.filePath
-      if (same) return
-      setStore("selected", next)
+    const isEqual = (a: InstanceSelection | null, b: InstanceSelection | null) => {
+      if (!a && !b) return true
+      if (!a || !b) return false
+      return (
+        a.path === b.path &&
+        a.name === b.name &&
+        a.className === b.className &&
+        a.filePath === b.filePath
+      )
     }
 
+    const setHighlighted = (next: InstanceSelection | null) => {
+      if (isEqual(next, store.highlighted)) return
+      setStore("highlighted", next)
+    }
+
+    const setInspected = (next: InstanceSelection | null) => {
+      if (isEqual(next, store.inspected)) return
+      setStore("inspected", next)
+    }
+
+    // Poll Studio for selection changes - only updates highlighted, NOT inspected
     createEffect(() => {
       const poll = () => {
         studioRequest<InstanceSelection[]>("/selection/get").then((result) => {
           if (!result.success) return
           const first = result.data[0] ?? null
-          setSelected(first)
+          setHighlighted(first)
         })
       }
 
@@ -46,12 +57,28 @@ export const { use: useInstance, provider: InstanceProvider } = createSimpleCont
     })
 
     return {
-      selected() {
-        return store.selected
+      // Highlighted state (for Explorer visual highlighting)
+      highlighted() {
+        return store.highlighted
       },
-      setSelected,
+      setHighlighted,
+
+      // Inspected state (for Inspector panel - user-controlled, persists)
+      inspected() {
+        return store.inspected
+      },
+      setInspected,
+      clearInspected() {
+        setStore("inspected", null)
+      },
+
+      // Backward compatibility aliases
+      selected() {
+        return store.highlighted
+      },
+      setSelected: setHighlighted,
       clear() {
-        setStore("selected", null)
+        setStore("highlighted", null)
       },
     }
   },

@@ -18,6 +18,7 @@ import type { Session } from "@stud/sdk/v2/client"
 interface SessionLeftSidebarProps {
   width: () => number
   onResize: (width: number) => void
+  onOpenInspector?: () => void
 }
 
 export function SessionLeftSidebar(props: SessionLeftSidebarProps) {
@@ -284,6 +285,9 @@ export function SessionLeftSidebar(props: SessionLeftSidebarProps) {
             onFileClick={(filePath) => {
               // TODO: Open file in editor
               console.log("Open file:", filePath)
+            }}
+            onInspect={() => {
+              props.onOpenInspector?.()
             }}
           />
         </div>

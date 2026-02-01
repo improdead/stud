@@ -1711,7 +1711,14 @@ export default function Page() {
       <div class="flex-1 min-h-0 flex flex-col md:flex-row">
         {/* Left Sidebar - Threads + Instance Tree */}
         <Show when={isDesktop() && layout.leftSidebar.opened()}>
-          <SessionLeftSidebar width={layout.leftSidebar.width} onResize={layout.leftSidebar.resize} />
+          <SessionLeftSidebar
+            width={layout.leftSidebar.width}
+            onResize={layout.leftSidebar.resize}
+            onOpenInspector={() => {
+              view().reviewPanel.open()
+              tabs().open("inspector")
+            }}
+          />
         </Show>
 
         {/* Mobile tab bar - only shown on mobile when user opened review */}

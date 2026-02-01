@@ -279,7 +279,147 @@ export function getToolInfo(tool: string, input: any = {}): ToolInfo {
         icon: "bubble-5",
         title: i18n.t("ui.tool.questions"),
       }
+    // Roblox tools
+    case "roblox_get_script":
+      return {
+        icon: "glasses",
+        title: i18n.t("ui.tool.roblox.getScript", { defaultValue: "Get Script" }),
+        subtitle: input.path,
+      }
+    case "roblox_set_script":
+      return {
+        icon: "code-lines",
+        title: i18n.t("ui.tool.roblox.setScript", { defaultValue: "Set Script" }),
+        subtitle: input.path,
+      }
+    case "roblox_edit_script":
+      return {
+        icon: "code-lines",
+        title: i18n.t("ui.tool.roblox.editScript", { defaultValue: "Edit Script" }),
+        subtitle: input.path,
+      }
+    case "roblox_get_children":
+      return {
+        icon: "bullet-list",
+        title: i18n.t("ui.tool.roblox.getChildren", { defaultValue: "Get Children" }),
+        subtitle: input.path,
+      }
+    case "roblox_get_properties":
+      return {
+        icon: "sliders",
+        title: i18n.t("ui.tool.roblox.getProperties", { defaultValue: "Get Properties" }),
+        subtitle: input.path,
+      }
+    case "roblox_set_property":
+      return {
+        icon: "sliders",
+        title: i18n.t("ui.tool.roblox.setProperty", { defaultValue: "Set Property" }),
+        subtitle: input.path,
+      }
+    case "roblox_create":
+      return {
+        icon: "plus",
+        title: i18n.t("ui.tool.roblox.create", { defaultValue: "Create Instance" }),
+        subtitle: input.className,
+      }
+    case "roblox_delete":
+      return {
+        icon: "trash",
+        title: i18n.t("ui.tool.roblox.delete", { defaultValue: "Delete Instance" }),
+        subtitle: input.path,
+      }
+    case "roblox_clone":
+      return {
+        icon: "copy",
+        title: i18n.t("ui.tool.roblox.clone", { defaultValue: "Clone Instance" }),
+        subtitle: input.path,
+      }
+    case "roblox_move":
+      return {
+        icon: "arrow-right",
+        title: i18n.t("ui.tool.roblox.move", { defaultValue: "Move Instance" }),
+        subtitle: input.path,
+      }
+    case "roblox_search":
+      return {
+        icon: "magnifying-glass",
+        title: i18n.t("ui.tool.roblox.search", { defaultValue: "Search Instances" }),
+        subtitle: input.query || input.className,
+      }
+    case "roblox_get_selection":
+      return {
+        icon: "cube",
+        title: i18n.t("ui.tool.roblox.getSelection", { defaultValue: "Get Selection" }),
+      }
+    case "roblox_run_code":
+      return {
+        icon: "play",
+        title: i18n.t("ui.tool.roblox.runCode", { defaultValue: "Run Code" }),
+        subtitle: i18n.t("ui.tool.roblox.studioCommandBar", { defaultValue: "Studio Command Bar" }),
+      }
+    case "roblox_bulk_create":
+      return {
+        icon: "plus",
+        title: i18n.t("ui.tool.roblox.bulkCreate", { defaultValue: "Bulk Create" }),
+      }
+    case "roblox_bulk_delete":
+      return {
+        icon: "trash",
+        title: i18n.t("ui.tool.roblox.bulkDelete", { defaultValue: "Bulk Delete" }),
+      }
+    case "roblox_bulk_set_property":
+      return {
+        icon: "sliders",
+        title: i18n.t("ui.tool.roblox.bulkSetProperty", { defaultValue: "Bulk Set Property" }),
+      }
+    case "roblox_universe_info":
+      return {
+        icon: "roblox",
+        title: i18n.t("ui.tool.roblox.universeInfo", { defaultValue: "Universe Info" }),
+      }
+    case "roblox_publish_place":
+      return {
+        icon: "cloud-upload",
+        title: i18n.t("ui.tool.roblox.publishPlace", { defaultValue: "Publish Place" }),
+      }
+    case "roblox_datastore_list":
+    case "roblox_datastore_get":
+    case "roblox_datastore_set":
+    case "roblox_ordered_datastore_list":
+    case "roblox_ordered_datastore_get":
+    case "roblox_ordered_datastore_set":
+    case "roblox_ordered_datastore_increment":
+      return {
+        icon: "database",
+        title: i18n.t("ui.tool.roblox.datastore", { defaultValue: "DataStore" }),
+        subtitle: input.datastoreName || input.key,
+      }
+    case "roblox_toolbox_search":
+      return {
+        icon: "magnifying-glass",
+        title: i18n.t("ui.tool.roblox.toolboxSearch", { defaultValue: "Toolbox Search" }),
+        subtitle: input.query,
+      }
+    case "roblox_asset_details":
+      return {
+        icon: "cube",
+        title: i18n.t("ui.tool.roblox.assetDetails", { defaultValue: "Asset Details" }),
+        subtitle: input.assetId,
+      }
+    case "roblox_insert_asset":
+      return {
+        icon: "download",
+        title: i18n.t("ui.tool.roblox.insertAsset", { defaultValue: "Insert Asset" }),
+        subtitle: input.assetId,
+      }
     default:
+      // Use roblox icon for any unknown roblox tools
+      if (tool.startsWith("roblox_")) {
+        return {
+          icon: "roblox",
+          title: tool.replace("roblox_", "").replace(/_/g, " "),
+        }
+      }
       return {
         icon: "mcp",
         title: tool,

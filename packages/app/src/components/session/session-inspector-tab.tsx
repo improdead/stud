@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createResource, createSignal, For, Show } from "solid-js"
+import { createEffect, createMemo, createResource, createSignal, For, Show, Suspense } from "solid-js"
 import { Dynamic } from "solid-js/web"
 import { Icon, type IconProps } from "@stud/ui/icon"
 import { IconButton } from "@stud/ui/icon-button"
@@ -940,20 +940,31 @@ function InstanceInspector() {
 
             {/* Properties */}
             <div class="flex-1 min-h-0 overflow-auto">
-              {/* Part Visual Summary */}
-              <Show when={isPartClass() && properties()}>
-                {(props) => <PartSummaryCard properties={props()} />}
-              </Show>
+              <Suspense
+                fallback={
+                  <div class="flex items-center gap-2 px-4 py-3 text-12-regular text-text-weak">
+                    <div class="size-4 border-2 border-border-base border-t-text-subtle rounded-full animate-spin" />
+                    Loading...
+                  </div>
+                }
+              >
+                {/* Part Visual Summary */}
+                <Show when={isPartClass() && properties()}>
+                  {(props) => <PartSummaryCard properties={props()} />}
+                </Show>
 
-              {/* Model/Container Statistics */}
-              <Show when={isContainerClass() && properties()}>
-                {(props) => <ModelStatisticsSection properties={props()} className={item().className} />}
-              </Show>
+                {/* Model/Container Statistics */}
+                <Show when={isContainerClass() && properties()}>
+                  {(props) => <ModelStatisticsSection properties={props()} className={item().className} />}
+                </Show>
 
-              <div class="py-2">
-                <div class="text-11-medium text-text-subtle uppercase tracking-wider px-4 mb-2">Properties</div>
-                <InstanceProperties path={item().path} properties={properties()} />
-              </div>
+                <div class="py-2">
+                  <div class="text-11-medium text-text-subtle uppercase tracking-wider px-4 mb-2">
+                    Properties
+                  </div>
+                  <InstanceProperties path={item().path} properties={properties()} />
+                </div>
+              </Suspense>
             </div>
           </>
         )}
@@ -974,15 +985,17 @@ export function SessionInspectorTab() {
   })
 
   return (
-    <Show when={scriptSelection()} fallback={<InstanceInspector />}>
-      {(script) => (
-        <ScriptPreview
-          filePath={script().filePath}
-          path={script().path}
-          name={script().name}
-          className={script().className}
-        />
-      )}
-    </Show>
+    <Suspense fallback={<div class="flex-1 flex flex-col items-center justify-center p-8 text-text-weak"><div class="size-6 border-2 border-border-base border-t-text-subtle rounded-full animate-spin mb-3" />Loading...</div>}>
+      <Show when={scriptSelection()} fallback={<InstanceInspector />}>
+        {(script) => (
+          <ScriptPreview
+            filePath={script().filePath}
+            path={script().path}
+            name={script().name}
+            className={script().className}
+          />
+        )}
+      </Show>
+    </Suspense>
   )
 }

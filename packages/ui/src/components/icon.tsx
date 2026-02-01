@@ -89,18 +89,45 @@ export interface IconProps extends ComponentProps<"svg"> {
 
 export function Icon(props: IconProps) {
   const [local, others] = splitProps(props, ["name", "size", "class", "classList"])
+  const sizePx = () => {
+    switch (local.size) {
+      case "small":
+        return "16px"
+      case "normal":
+        return "20px"
+      case "medium":
+      case "large":
+        return "24px"
+      default:
+        return "20px"
+    }
+  }
+
   return (
-    <div data-component="icon" data-size={local.size || "normal"}>
+    <div
+      data-component="icon"
+      data-size={local.size || "normal"}
+      style={{
+        display: "inline-flex",
+        width: sizePx(),
+        height: sizePx(),
+        "min-width": sizePx(),
+        "min-height": sizePx(),
+        "flex-shrink": "0",
+        overflow: "hidden",
+      }}
+      classList={{
+        ...(local.classList || {}),
+        [local.class ?? ""]: !!local.class,
+      }}
+    >
       <svg
         data-slot="icon-svg"
-        classList={{
-          ...(local.classList || {}),
-          [local.class ?? ""]: !!local.class,
-        }}
         fill="none"
         viewBox="0 0 20 20"
         innerHTML={icons[local.name as keyof typeof icons]}
         aria-hidden="true"
+        style={{ width: "100%", height: "100%", display: "block" }}
         {...others}
       />
     </div>

@@ -279,17 +279,19 @@ export function SessionLeftSidebar(props: SessionLeftSidebarProps) {
           </div>
         </button>
         <div class="flex-1 min-h-0 overflow-y-auto" classList={{ hidden: !explorerOpen() }}>
-          <InstanceTree
-            directory={directory()}
-            class="px-1"
-            onFileClick={(filePath) => {
-              // TODO: Open file in editor
-              console.log("Open file:", filePath)
-            }}
-            onInspect={() => {
-              props.onOpenInspector?.()
-            }}
-          />
+          <Suspense fallback={<div class="px-4 py-2 text-12-regular text-text-subtle opacity-60">Loading Explorer...</div>}>
+            <InstanceTree
+              directory={directory()}
+              class="px-1"
+              onFileClick={(filePath) => {
+                // TODO: Open file in editor
+                console.log("Open file:", filePath)
+              }}
+              onInspect={() => {
+                props.onOpenInspector?.()
+              }}
+            />
+          </Suspense>
         </div>
       </div>
 

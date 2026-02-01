@@ -16,11 +16,11 @@ type ProjectCardProps = {
   homedir?: string
 }
 
-const TYPE_ICONS: Record<DiscoveredProject["type"], string> = {
-  rojo: "git-branch",
-  wally: "box",
-  rbxl: "file",
-  rbxlx: "file",
+const TYPE_ICONS: Record<DiscoveredProject["type"], any> = {
+  rojo: "branch",
+  wally: "archive",
+  rbxl: "dot-grid",
+  rbxlx: "dot-grid",
   rbxm: "cube",
   unknown: "folder",
 }

@@ -2,7 +2,7 @@ import { Motion, Presence } from "solid-motionone"
 import { createMemo, createSignal, type ParentProps, type JSX, onMount } from "solid-js"
 import { useLocation } from "@solidjs/router"
 
-function AnimatedPage(props: { children: JSX.Element }) {
+function AnimatedPage(props: { children: JSX.Element; key?: string }) {
   return (
     <Motion.div
       class="size-full"

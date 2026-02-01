@@ -1,4 +1,4 @@
-import { createEffect, createSignal, Match, on, onCleanup, onMount, Switch } from "solid-js"
+import { createSignal, Match, onCleanup, onMount, Switch } from "solid-js"
 import { useLayout } from "@/context/layout"
 import { useNavigate } from "@solidjs/router"
 import { base64Encode } from "@stud/util/encode"
@@ -14,10 +14,6 @@ import { useLanguage } from "@/context/language"
 import { showToast } from "@stud/ui/toast"
 
 type BridgeState = "connected" | "waiting" | "error" | "checking"
-
-// Module-level flag to track if auto-navigation has already happened this app session
-// This persists across component remounts (e.g., when user clicks Home)
-let hasAutoNavigated = false
 
 export default function Home() {
   const layout = useLayout()
@@ -59,29 +55,7 @@ export default function Home() {
     requestAnimationFrame(() => setVisible(true))
   })
 
-  // Auto-navigate to the last project when connected (only on first app load)
-  createEffect(
-    on(bridgeStatus, (status) => {
-      if (status !== "connected") return
-      if (hasAutoNavigated) return
-
-      // Check if there's a last project to navigate to
-      const projects = layout.projects.list()
-      const lastProject = server.projects.last()
-
-      if (lastProject && projects.find((p) => p.worktree === lastProject)) {
-        hasAutoNavigated = true
-        navigate(`/${base64Encode(lastProject)}/session`)
-      } else if (projects.length > 0) {
-        // Navigate to the first project if we have any
-        hasAutoNavigated = true
-        const first = projects[0]
-        if (first) {
-          navigate(`/${base64Encode(first.worktree)}/session`)
-        }
-      }
-    }),
-  )
+  // Note: Auto-navigation on initial load is handled by SplashScreen in app.tsx
 
   function openProject(directory: string) {
     layout.projects.open(directory)

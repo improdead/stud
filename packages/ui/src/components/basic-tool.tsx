@@ -28,11 +28,12 @@ export interface BasicToolProps {
   forceOpen?: boolean
   locked?: boolean
   status?: string
+  compact?: boolean
   onSubtitleClick?: () => void
 }
 
 export function BasicTool(props: BasicToolProps) {
-  const [open, setOpen] = createSignal(props.defaultOpen ?? false)
+  const [open, setOpen] = createSignal(props.compact ? false : (props.defaultOpen ?? false))
 
   createEffect(() => {
     if (props.forceOpen) setOpen(true)
@@ -50,7 +51,7 @@ export function BasicTool(props: BasicToolProps) {
   return (
     <Collapsible open={open()} onOpenChange={handleOpenChange}>
       <Collapsible.Trigger>
-        <div data-component="tool-trigger" data-status={props.status}>
+        <div data-component="tool-trigger" data-status={props.status} data-compact={props.compact}>
           <div data-slot="basic-tool-trigger-content">
             {/* Icon with status indicator */}
             <div data-slot="basic-tool-icon-wrapper">

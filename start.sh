@@ -37,16 +37,17 @@ NC='\033[0m'
 print_header() {
     clear
     echo ""
-    echo -e "${CYAN}"
-    echo "  ███████╗████████╗██╗   ██╗██████╗ "
-    echo "  ██╔════╝╚══██╔══╝██║   ██║██╔══██╗"
-    echo "  ███████╗   ██║   ██║   ██║██║  ██║"
-    echo "  ╚════██║   ██║   ██║   ██║██║  ██║"
-    echo "  ███████║   ██║   ╚██████╔╝██████╔╝"
-    echo "  ╚══════╝   ╚═╝    ╚═════╝ ╚═════╝ "
-    echo -e "${NC}"
+
+    # Try to use oh-my-logo for a beautiful gradient logo
+    if command -v bun &> /dev/null; then
+        bunx --bun oh-my-logo "STUD" grad-blue --color 2>/dev/null || print_fallback_logo
+    else
+        print_fallback_logo
+    fi
+
+    echo ""
     echo -e "  ${DIM}AI-Powered Roblox Development${NC}              ${DIM}v${VERSION}${NC}"
-    
+
     # Show git commit if available
     if [ -d ".git" ]; then
         local commit=$(git rev-parse --short HEAD 2>/dev/null || echo "")
@@ -57,6 +58,17 @@ print_header() {
     echo ""
     echo -e "  ${DIM}────────────────────────────────────────────${NC}"
     echo ""
+}
+
+print_fallback_logo() {
+    echo -e "${CYAN}"
+    echo "  ███████╗████████╗██╗   ██╗██████╗ "
+    echo "  ██╔════╝╚══██╔══╝██║   ██║██╔══██╗"
+    echo "  ███████╗   ██║   ██║   ██║██║  ██║"
+    echo "  ╚════██║   ██║   ██║   ██║██║  ██║"
+    echo "  ███████║   ██║   ╚██████╔╝██████╔╝"
+    echo "  ╚══════╝   ╚═╝    ╚═════╝ ╚═════╝ "
+    echo -e "${NC}"
 }
 
 status_ok() {

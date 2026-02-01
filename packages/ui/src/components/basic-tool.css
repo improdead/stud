@@ -234,3 +234,54 @@
     color: var(--text-strong);
   }
 }
+
+/* Compact mode - one-line display for read-only tools */
+[data-component="tool-trigger"][data-compact="true"] {
+  padding: 2px 0;
+
+  [data-slot="basic-tool-trigger-content"] {
+    gap: 8px;
+  }
+
+  [data-slot="basic-tool-icon"] {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+
+    [data-component="icon"] {
+      width: 12px;
+      height: 12px;
+    }
+  }
+
+  [data-slot="basic-tool-spinner-ring"] {
+    inset: -2px;
+    border-radius: 8px;
+  }
+
+  [data-slot="basic-tool-status-dot"] {
+    width: 12px;
+    height: 12px;
+    bottom: -1px;
+    right: -1px;
+
+    [data-component="icon"] {
+      width: 7px;
+      height: 7px;
+    }
+  }
+
+  [data-slot="basic-tool-title"] {
+    font-size: 12px;
+  }
+
+  [data-slot="basic-tool-subtitle"] {
+    font-size: 10px;
+    padding: 1px 6px;
+  }
+
+  [data-slot="basic-tool-arg"] {
+    font-size: 9px;
+    padding: 1px 4px;
+  }
+}

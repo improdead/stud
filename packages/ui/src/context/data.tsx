@@ -26,6 +26,11 @@ export type PickerRequest = {
   title: string
   items: PickerItem[]
   recommended?: (string | number)[]
+  selectionRange?: {
+    min?: number
+    max?: number
+    aiPickCount?: number
+  }
   multiple?: boolean
   tool?: {
     messageID: string

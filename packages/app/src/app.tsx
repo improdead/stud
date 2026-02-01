@@ -1,6 +1,6 @@
 import "@/index.css"
-import { ErrorBoundary, Show, lazy, type ParentProps } from "solid-js"
-import { Router, Route, Navigate } from "@solidjs/router"
+import { createSignal, ErrorBoundary, Show, lazy, type ParentProps } from "solid-js"
+import { Router, Route, Navigate, useNavigate } from "@solidjs/router"
 import { MetaProvider } from "@solidjs/meta"
 import { Font } from "@stud/ui/font"
 import { MarkedProvider } from "@stud/ui/context/marked"
@@ -12,7 +12,7 @@ import { Code } from "@stud/ui/code"
 import { ThemeProvider } from "@stud/ui/theme"
 import { GlobalSyncProvider } from "@/context/global-sync"
 import { PermissionProvider } from "@/context/permission"
-import { LayoutProvider } from "@/context/layout"
+import { LayoutProvider, useLayout } from "@/context/layout"
 import { GlobalSDKProvider } from "@/context/global-sdk"
 import { normalizeServerUrl, ServerProvider, useServer } from "@/context/server"
 import { SettingsProvider } from "@/context/settings"
@@ -32,10 +32,55 @@ import Layout from "@/pages/layout"
 import DirectoryLayout from "@/pages/directory-layout"
 import { ErrorPage } from "./pages/error"
 import { Suspense } from "solid-js"
+import { SplashScreen } from "@/components/splash-screen"
+import { base64Encode } from "@stud/util/encode"
 
 const Home = lazy(() => import("@/pages/home"))
 const Session = lazy(() => import("@/pages/session"))
 const Loading = () => <div class="size-full" />
+
+// Track if splash has been shown this session
+let splashShown = false
+
+function HomeWithSplash() {
+  const [showSplash, setShowSplash] = createSignal(!splashShown)
+  const navigate = useNavigate()
+  const layout = useLayout()
+  const server = useServer()
+
+  const handleSplashComplete = (connected: boolean) => {
+    splashShown = true
+    setShowSplash(false)
+
+    if (connected) {
+      // Navigate to last project or first available
+      const projects = layout.projects.list()
+      const lastProject = server.projects.last()
+
+      if (lastProject && projects.find((p) => p.worktree === lastProject)) {
+        navigate(`/${base64Encode(lastProject)}/session`)
+      } else if (projects.length > 0) {
+        const first = projects[0]
+        if (first) {
+          navigate(`/${base64Encode(first.worktree)}/session`)
+        }
+      }
+    }
+  }
+
+  return (
+    <>
+      <Show when={showSplash()}>
+        <SplashScreen onComplete={handleSplashComplete} />
+      </Show>
+      <Show when={!showSplash()}>
+        <Suspense fallback={<Loading />}>
+          <Home />
+        </Suspense>
+      </Show>
+    </>
+  )
+}
 
 function UiI18nBridge(props: ParentProps) {
   const language = useLanguage()
@@ -134,11 +179,7 @@ export function AppInterface(props: { defaultUrl?: string }) {
             >
               <Route
                 path="/"
-                component={() => (
-                  <Suspense fallback={<Loading />}>
-                    <Home />
-                  </Suspense>
-                )}
+                component={HomeWithSplash}
               />
               <Route path="/:dir" component={DirectoryLayout}>
                 <Route path="/" component={() => <Navigate href="session" />} />

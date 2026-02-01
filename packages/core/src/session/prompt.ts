@@ -1743,6 +1743,32 @@ NOTE: At any point in time through this workflow you should feel free to ask the
     return result
   }
 
+  // Extract first sentence or first ~50 chars for provisional title
+  function extractFirstSentence(text: string): string | undefined {
+    if (!text) return undefined
+
+    // Remove @mentions for cleaner title
+    const cleaned = text.replace(/@[\w./]+/g, "").trim()
+    if (!cleaned) return undefined
+
+    // Match first sentence ending with . ! or ?
+    const sentenceMatch = cleaned.match(/^[^.!?]+[.!?]/)
+    if (sentenceMatch) {
+      const sentence = sentenceMatch[0].trim()
+      if (sentence.length <= 60) return sentence
+      return sentence.slice(0, 57) + "..."
+    }
+
+    // If no sentence end, use first 50 chars
+    if (cleaned.length <= 50) return cleaned
+
+    // Try to break at word boundary
+    const truncated = cleaned.slice(0, 50)
+    const lastSpace = truncated.lastIndexOf(" ")
+    if (lastSpace > 30) return truncated.slice(0, lastSpace) + "..."
+    return truncated + "..."
+  }
+
   async function ensureTitle(input: {
     session: Session.Info
     history: MessageV2.WithParts[]
@@ -1756,6 +1782,23 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       (m) => m.info.role === "user" && !m.parts.every((p) => "synthetic" in p && p.synthetic),
     )
     const userMsgCount = realUserMessages.length
+
+    // Set provisional title immediately from first message
+    if (userMsgCount === 1 && Session.isDefaultTitle(input.session.title)) {
+      const firstMessage = realUserMessages[0]
+      const textParts = firstMessage.parts.filter((p) => p.type === "text") as MessageV2.TextPart[]
+      const text = textParts.map((p) => p.text).join(" ").trim()
+      const provisionalTitle = extractFirstSentence(text)
+      if (provisionalTitle) {
+        await Session.update(
+          input.session.id,
+          (draft) => {
+            draft.title = provisionalTitle
+          },
+          { touch: false },
+        )
+      }
+    }
 
     // Generate title on first message OR update every 5 messages for better context
     const isDefaultTitle = Session.isDefaultTitle(input.session.title)

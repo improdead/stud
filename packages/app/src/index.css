@@ -19,9 +19,9 @@
 
 /* Home page glass card styling */
 .glass-card {
-  background: rgba(24, 24, 27, 0.4);
+  background: var(--surface-raised-base);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-weak-base);
   will-change: background, border-color, box-shadow;
   transition:
     background 0.3s ease,
@@ -30,9 +30,9 @@
 }
 
 .glass-card:hover {
-  background: rgba(39, 39, 42, 0.5);
-  border-color: rgba(255, 255, 255, 0.15);
-  box-shadow: 0 0 40px -10px rgba(0, 0, 0, 0.5);
+  background: var(--surface-raised-base-hover);
+  border-color: var(--border-base);
+  box-shadow: var(--shadow-md);
 }
 
 /* Floating animation for background blobs */
@@ -52,21 +52,45 @@
 
 /* Home page background */
 .home-bg {
-  background-color: var(--background-stronger, #050505);
-  background-image:
-    radial-gradient(circle at 50% 0%, rgba(40, 40, 40, 0.4) 0%, transparent 40%),
-    radial-gradient(circle at 80% 80%, rgba(30, 30, 30, 0.3) 0%, transparent 30%);
+  background-color: var(--background-stronger);
+}
+
+@media (prefers-color-scheme: dark) {
+  .home-bg {
+    background-image:
+      radial-gradient(circle at 50% 0%, rgba(40, 40, 40, 0.4) 0%, transparent 40%),
+      radial-gradient(circle at 80% 80%, rgba(30, 30, 30, 0.3) 0%, transparent 30%);
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  .home-bg {
+    background-image:
+      radial-gradient(circle at 50% 0%, rgba(200, 200, 200, 0.3) 0%, transparent 40%),
+      radial-gradient(circle at 80% 80%, rgba(180, 180, 180, 0.2) 0%, transparent 30%);
+  }
 }
 
 /* Main action glow effect */
 .main-action-glow {
   position: absolute;
   inset: -1px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0));
   border-radius: 1rem;
   z-index: -1;
   opacity: 0;
   transition: opacity 0.3s ease;
+}
+
+@media (prefers-color-scheme: dark) {
+  .main-action-glow {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0));
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  .main-action-glow {
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0));
+  }
 }
 
 .group:hover .main-action-glow {

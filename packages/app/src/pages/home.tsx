@@ -128,19 +128,17 @@ export default function Home() {
       {/* Floating background blobs */}
       <div class="absolute inset-0 overflow-hidden pointer-events-none z-0">
         <div
-          class="absolute w-[500px] h-[500px] rounded-full blur-[100px] mix-blend-screen animate-float"
+          class="absolute w-[500px] h-[500px] rounded-full blur-[100px] animate-float bg-surface-base opacity-50"
           style={{
             top: "-10%",
             left: "20%",
-            background: "rgba(63, 63, 70, 0.1)",
           }}
         />
         <div
-          class="absolute w-[400px] h-[400px] rounded-full blur-[80px] mix-blend-screen animate-float"
+          class="absolute w-[400px] h-[400px] rounded-full blur-[80px] animate-float bg-surface-base opacity-50"
           style={{
             bottom: "-10%",
             right: "20%",
-            background: "rgba(63, 63, 70, 0.1)",
             "animation-delay": "-2s",
           }}
         />
@@ -159,22 +157,22 @@ export default function Home() {
           <div class="flex flex-col items-center gap-4">
             {/* Logo with hover effect */}
             <div class="relative group cursor-default">
-              <div class="absolute inset-0 bg-white/5 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div class="absolute inset-0 bg-surface-base blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <div class="relative transform group-hover:scale-105 transition-transform duration-300">
                 <Logo class="scale-[2]" />
               </div>
             </div>
 
             <div class="space-y-2 mt-4">
-              <h1 class="text-5xl font-bold tracking-tight text-white">Stud</h1>
-              <p class="text-lg text-zinc-400 font-medium">{language.t("home.tagline")}</p>
+              <h1 class="text-5xl font-bold tracking-tight text-text-strong">Stud</h1>
+              <p class="text-lg text-text-weak font-medium">{language.t("home.tagline")}</p>
             </div>
           </div>
 
           {/* Connection status badge */}
           <button
             type="button"
-            class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-900/80 border border-zinc-800 backdrop-blur-sm shadow-lg hover:border-zinc-700 transition-colors"
+            class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-raised-base border border-border-weak-base backdrop-blur-sm shadow-lg hover:border-border-base transition-colors"
             onClick={() => dialog.show(() => <DialogSelectServer />)}
           >
             <span class="relative flex h-2 w-2">
@@ -183,7 +181,7 @@ export default function Home() {
                   "animate-ping absolute inline-flex h-full w-full rounded-full opacity-75": true,
                   "bg-green-400": server.healthy() === true,
                   "bg-red-400": server.healthy() === false,
-                  "bg-zinc-400": server.healthy() === undefined,
+                  "bg-gray-400": server.healthy() === undefined,
                 }}
               />
               <span
@@ -191,11 +189,11 @@ export default function Home() {
                   "relative inline-flex rounded-full h-2 w-2": true,
                   "bg-green-500": server.healthy() === true,
                   "bg-red-500": server.healthy() === false,
-                  "bg-zinc-500": server.healthy() === undefined,
+                  "bg-gray-500": server.healthy() === undefined,
                 }}
               />
             </span>
-            <span class="text-xs font-mono text-zinc-400">{server.name}</span>
+            <span class="text-xs font-mono text-text-weak">{server.name}</span>
           </button>
         </div>
 
@@ -209,23 +207,23 @@ export default function Home() {
             disabled={connecting()}
           >
             <div class="main-action-glow" />
-            <div class="relative glass-card rounded-2xl p-6 transition-all duration-300 group-hover:bg-zinc-800/50 group-active:scale-[0.99]">
+            <div class="relative glass-card rounded-2xl p-6 transition-all duration-300 group-hover:bg-surface-raised-base-hover group-active:scale-[0.99]">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-6">
-                  <div class="h-14 w-14 rounded-xl bg-zinc-900 flex items-center justify-center border border-zinc-800 group-hover:border-zinc-600 transition-colors shadow-inner">
-                    <Icon name="window-cursor" size="large" class="text-white" />
+                  <div class="h-14 w-14 rounded-xl bg-surface-inset-base flex items-center justify-center border border-border-weak-base group-hover:border-border-base transition-colors shadow-inner">
+                    <Icon name="window-cursor" size="large" class="text-icon-strong-base" />
                   </div>
                   <div class="space-y-1">
-                    <h2 class="text-xl font-semibold text-white group-hover:text-white/90">
+                    <h2 class="text-xl font-semibold text-text-strong group-hover:text-text-base">
                       {language.t("home.connectToStudio")}
                     </h2>
-                    <p class="text-sm text-zinc-400 group-hover:text-zinc-300">
+                    <p class="text-sm text-text-weak group-hover:text-text-base">
                       {language.t("home.connectToStudio.description")}
                     </p>
                   </div>
                 </div>
                 <div class="pr-2 transform transition-transform duration-300 group-hover:translate-x-1">
-                  <Icon name="arrow-right" size="normal" class="text-zinc-500 group-hover:text-white" />
+                  <Icon name="arrow-right" size="normal" class="text-icon-weak-base group-hover:text-icon-base" />
                 </div>
               </div>
             </div>
@@ -236,16 +234,16 @@ export default function Home() {
             {/* Open .rbxl File */}
             <button
               type="button"
-              class="group glass-card rounded-xl p-5 text-left transition-all duration-300 hover:bg-zinc-800/50 active:scale-[0.98]"
+              class="group glass-card rounded-xl p-5 text-left transition-all duration-300 hover:bg-surface-raised-base-hover active:scale-[0.98]"
               onClick={openRobloxFile}
             >
               <div class="flex flex-col gap-4">
-                <div class="h-10 w-10 rounded-lg bg-zinc-900/50 flex items-center justify-center border border-zinc-800/50 group-hover:border-zinc-700">
-                  <Icon name="folder" size="normal" class="text-zinc-400 group-hover:text-white transition-colors" />
+                <div class="h-10 w-10 rounded-lg bg-surface-inset-base flex items-center justify-center border border-border-weak-base group-hover:border-border-base">
+                  <Icon name="folder" size="normal" class="text-icon-weak-base group-hover:text-icon-base transition-colors" />
                 </div>
                 <div>
-                  <h3 class="font-medium text-white mb-1">{language.t("home.openRobloxFile")}</h3>
-                  <p class="text-xs text-zinc-500 group-hover:text-zinc-400">
+                  <h3 class="font-medium text-text-strong mb-1">{language.t("home.openRobloxFile")}</h3>
+                  <p class="text-xs text-text-weaker group-hover:text-text-weak">
                     {language.t("home.openRobloxFile.description")}
                   </p>
                 </div>
@@ -255,16 +253,16 @@ export default function Home() {
             {/* Connect via Rojo */}
             <button
               type="button"
-              class="group glass-card rounded-xl p-5 text-left transition-all duration-300 hover:bg-zinc-800/50 active:scale-[0.98]"
+              class="group glass-card rounded-xl p-5 text-left transition-all duration-300 hover:bg-surface-raised-base-hover active:scale-[0.98]"
               onClick={connectViaRojo}
             >
               <div class="flex flex-col gap-4">
-                <div class="h-10 w-10 rounded-lg bg-zinc-900/50 flex items-center justify-center border border-zinc-800/50 group-hover:border-zinc-700">
-                  <Icon name="code" size="normal" class="text-zinc-400 group-hover:text-white transition-colors" />
+                <div class="h-10 w-10 rounded-lg bg-surface-inset-base flex items-center justify-center border border-border-weak-base group-hover:border-border-base">
+                  <Icon name="code" size="normal" class="text-icon-weak-base group-hover:text-icon-base transition-colors" />
                 </div>
                 <div>
-                  <h3 class="font-medium text-white mb-1">{language.t("home.connectViaRojo")}</h3>
-                  <p class="text-xs text-zinc-500 group-hover:text-zinc-400">
+                  <h3 class="font-medium text-text-strong mb-1">{language.t("home.connectViaRojo")}</h3>
+                  <p class="text-xs text-text-weaker group-hover:text-text-weak">
                     {language.t("home.connectViaRojo.description")}
                   </p>
                 </div>
@@ -274,14 +272,14 @@ export default function Home() {
         </div>
 
         {/* Bridge Status */}
-        <div class="flex items-center gap-2 text-sm text-zinc-400">
+        <div class="flex items-center gap-2 text-sm text-text-weak">
           <div
             classList={{
               "h-2 w-2 rounded-full transition-colors duration-300": true,
               "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]": bridgeStatus() === "connected",
               "bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.6)]": bridgeStatus() === "waiting",
               "bg-red-500": bridgeStatus() === "error",
-              "bg-zinc-500 animate-pulse": bridgeStatus() === "checking",
+              "bg-gray-500 animate-pulse": bridgeStatus() === "checking",
             }}
           />
           <Switch>
@@ -292,7 +290,7 @@ export default function Home() {
               <span>{language.t("bridge.waiting")}</span>
               <button
                 type="button"
-                class="text-zinc-300 hover:text-white underline underline-offset-2 hover:no-underline transition-colors duration-150"
+                class="text-text-base hover:text-text-strong underline underline-offset-2 hover:no-underline transition-colors duration-150"
                 onClick={() => dialog.show(() => <DialogConnectionHelp />)}
               >
                 {language.t("bridge.notConnecting")}
@@ -302,7 +300,7 @@ export default function Home() {
               <span>{language.t("bridge.notRunning")}</span>
               <button
                 type="button"
-                class="text-zinc-300 hover:text-white underline underline-offset-2 hover:no-underline transition-colors duration-150"
+                class="text-text-base hover:text-text-strong underline underline-offset-2 hover:no-underline transition-colors duration-150"
                 onClick={() => dialog.show(() => <DialogConnectionHelp />)}
               >
                 {language.t("bridge.notConnecting")}

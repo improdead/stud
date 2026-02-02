@@ -1,4 +1,4 @@
-import { createMemo, createSignal, Index, onMount, Show } from "solid-js"
+import { createMemo, createSignal, Index, onMount, Show, Suspense } from "solid-js"
 import { Motion } from "solid-motionone"
 import { useParams, useNavigate } from "@solidjs/router"
 import { useLanguage } from "@/context/language"

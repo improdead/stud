@@ -26,3 +26,7 @@ target
 opencode-dev
 logs/
 *.bun-build
+.playwright-mcp/
+.opencode/plans/
+.last-dev-start
+firebase-debug.log

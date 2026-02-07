@@ -1,3 +1,12 @@
+import type { Metadata } from "next"
+
+export const metadata: Metadata = {
+  title: "Permissions",
+  description:
+    "Understand how Stud keeps you in control with granular, transparent permission prompts. Allow once, allow always, or reject any action.",
+  alternates: { canonical: "/docs/permissions" },
+}
+
 export default function PermissionsPage() {
   return (
     <div className="max-w-3xl">

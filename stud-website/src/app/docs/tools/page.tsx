@@ -1,3 +1,12 @@
+import type { Metadata } from "next"
+
+export const metadata: Metadata = {
+  title: "Tools Reference",
+  description:
+    "Complete reference for every Stud tool: Read, Write, Edit, Glob, Grep, Bash execution, and Subagent delegation.",
+  alternates: { canonical: "/docs/tools" },
+}
+
 export default function ToolsPage() {
   return (
     <div className="max-w-3xl">

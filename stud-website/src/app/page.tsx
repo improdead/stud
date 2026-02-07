@@ -8,9 +8,42 @@ import SecuritySection from "../components/sections/SecuritySection"
 import SiteFooter from "../components/sections/SiteFooter"
 import SupportSection from "../components/sections/SupportSection"
 
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "Stud",
+  applicationCategory: "DeveloperApplication",
+  operatingSystem: "macOS, Windows, Linux",
+  description:
+    "Open-source AI coding assistant with deep Roblox Studio integration. Edit Luau scripts, manipulate instances, query DataStores, and search the Toolbox from your terminal.",
+  url: "https://stud.dev",
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+  },
+  featureList: [
+    "27+ Roblox Studio tools",
+    "Luau script editing",
+    "Instance manipulation",
+    "DataStore queries",
+    "Toolbox search",
+    "File read/write/edit",
+    "Glob and Grep search",
+    "Bash execution",
+    "Subagent delegation",
+    "Granular permissions",
+  ],
+}
+
 export default function HomePage() {
   return (
     <div className="flex min-h-screen flex-col">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
       {/* Full-screen dark hero with Unicorn Studio */}
       <HeroSection />
 

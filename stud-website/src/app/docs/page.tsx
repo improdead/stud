@@ -1,4 +1,12 @@
+import type { Metadata } from "next"
 import { BookOpen, Wrench, Shield, Gamepad2 } from "lucide-react"
+
+export const metadata: Metadata = {
+  title: "Documentation",
+  description:
+    "Learn how to use Stud, the open-source AI coding assistant for Roblox. Guides for tools, permissions, and Roblox Studio integration.",
+  alternates: { canonical: "/docs" },
+}
 
 const cards = [
   {

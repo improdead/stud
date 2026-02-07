@@ -1,3 +1,12 @@
+import type { Metadata } from "next"
+
+export const metadata: Metadata = {
+  title: "Roblox Studio Integration",
+  description:
+    "27+ specialized tools for Roblox Studio. Edit Luau scripts, manipulate instances, query DataStores, and search the Toolbox from your terminal.",
+  alternates: { canonical: "/docs/roblox" },
+}
+
 export default function RobloxPage() {
   return (
     <div className="max-w-3xl">

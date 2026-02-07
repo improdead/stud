@@ -1,3 +1,12 @@
+import type { Metadata } from "next"
+
+export const metadata: Metadata = {
+  title: "Installation & Setup",
+  description:
+    "Get up and running with Stud in under five minutes. Install, configure your API key, set up the Roblox Studio plugin, and write your first prompt.",
+  alternates: { canonical: "/docs/getting-started" },
+}
+
 export default function GettingStartedPage() {
   return (
     <div className="max-w-3xl">

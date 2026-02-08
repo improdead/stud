@@ -270,6 +270,11 @@
   height: 100% !important;
 }
 
+.hero-unicorn {
+  transform: scale(1.32);
+  transform-origin: center;
+}
+
 [data-us-project] canvas {
   width: 100% !important;
   height: 100% !important;

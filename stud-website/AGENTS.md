@@ -1,5 +1,5 @@
 ## Project Summary
-A pixel-perfect clone of PlayerZero (https://playerzero.ai/).
+A Stud website inspired by PlayerZero (https://playerzero.ai/).
 
 ## Tech Stack
 - Framework: Next.js 15 (App Router)

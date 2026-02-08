@@ -56,8 +56,8 @@ export default function HeroSection() {
   return (
     <section className="relative min-h-screen w-full overflow-hidden bg-[#f8f8f6]">
       {/* Unicorn Studio Background */}
-      <div className="absolute inset-0 z-0 opacity-40">
-        <div ref={unicornRef} data-us-project="Ofw4PXBK6L2C7s9RyNL8" style={{ width: "100%", height: "100%" }} />
+      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden opacity-40">
+        <div className="hero-unicorn" ref={unicornRef} data-us-project="Ofw4PXBK6L2C7s9RyNL8" style={{ width: "100%", height: "100%" }} />
       </div>
 
       {/* Navigation */}

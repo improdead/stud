@@ -8,6 +8,7 @@ import {
   Wrench,
   Shield,
   Github,
+  User,
 } from "lucide-react"
 
 type FeatureKey = "assistant" | "roblox" | "tools" | "permissions" | "opensource"
@@ -92,8 +93,8 @@ function AssistantDemo() {
   return (
     <div className="space-y-2.5">
       <div className="flex items-start gap-2.5">
-        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-secondary text-[10px] font-bold text-foreground/60">
-          U
+        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-secondary text-foreground/60">
+          <User className="h-3.5 w-3.5" />
         </div>
         <div className="rounded-lg rounded-tl-sm bg-secondary/80 px-3 py-2 text-[13px] leading-relaxed text-foreground">
           Add a health bar GUI to the player

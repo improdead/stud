@@ -158,16 +158,19 @@ export default function SupportSection() {
               <button
                 key={feature.key}
                 onClick={() => handleClick(feature.key)}
-                className={`relative flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 cursor-pointer ${
-                  isActive
-                    ? "bg-foreground text-white shadow-sm"
-                    : "text-foreground/50 hover:text-foreground/80 hover:bg-muted/50"
-                }`}
+                className="relative flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors duration-200 cursor-pointer"
               >
-                <Icon className="h-3.5 w-3.5" />
-                <span>{feature.title}</span>
                 {isActive && (
-                  <div className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full overflow-hidden">
+                  <motion.div
+                    layoutId="support-tab-highlight"
+                    className="absolute inset-0 rounded-lg bg-foreground shadow-sm"
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  />
+                )}
+                <Icon className={`relative z-10 h-3.5 w-3.5 transition-colors duration-200 ${isActive ? "text-white" : "text-foreground/50"}`} />
+                <span className={`relative z-10 transition-colors duration-200 ${isActive ? "text-white" : "text-foreground/50 hover:text-foreground/80"}`}>{feature.title}</span>
+                {isActive && (
+                  <div className="absolute bottom-0 left-0 right-0 z-10 h-[2px] rounded-full overflow-hidden">
                     <motion.div
                       className="h-full bg-white/30"
                       initial={{ width: "0%" }}

@@ -67,9 +67,6 @@ export default function HeroSection() {
           <span className="font-tech text-sm tracking-[0.18em] text-foreground md:text-base">STUD</span>
         </a>
         <div className="hidden items-center gap-7 md:flex">
-          <a href="/features" className="text-sm font-medium text-foreground/50 transition-colors hover:text-foreground">
-            Features
-          </a>
           <a href="/docs" className="text-sm font-medium text-foreground/50 transition-colors hover:text-foreground">
             Docs
           </a>

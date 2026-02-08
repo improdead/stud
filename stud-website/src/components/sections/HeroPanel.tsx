@@ -2,6 +2,7 @@
 
 import {Terminal} from "lucide-react";
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 const mosaicCellsHtml = `
   <div class="aspect-square border border-white/10 dark:border-white/5" style="background-color:rgba(255, 255, 255, 0.04528848571159285);backdrop-filter:blur(8.18649562328028px);-webkit-backdrop-filter:blur(8.18649562328028px);transition:background-color 0.3s ease"></div>
@@ -198,8 +199,16 @@ export default function HeroPanel() {
                         4.2k tokens · $0.03
                       </span>
                     </div>
-                    <div className="border-border bg-tertiary rounded-sm border font-mono">
-                      {toolRows.map((row, i) => (
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={activeTab}
+                        initial={{ opacity: 0, filter: "blur(8px)" }}
+                        animate={{ opacity: 1, filter: "blur(0px)" }}
+                        exit={{ opacity: 0, filter: "blur(8px)" }}
+                        transition={{ duration: 0.25, ease: "easeInOut" }}
+                        className="border-border bg-tertiary rounded-sm border font-mono"
+                      >
+                        {toolRows.map((row, i) => (
                         <div
                           key={row.text}
                           className={`flex h-10 items-center justify-between px-3 py-2 ${i < toolRows.length - 1 ? "border-b border-border" : ""}`}
@@ -230,7 +239,8 @@ export default function HeroPanel() {
                           )}
                         </div>
                       ))}
-                    </div>
+                      </motion.div>
+                    </AnimatePresence>
                   </div>
                 </div>
               </div>
@@ -256,45 +266,46 @@ export default function HeroPanel() {
               <div className="flex flex-col h-full gap-0">
                 <div className="grid h-full grid-rows-6 tracking-tight">
                   <div className="flex-1 outline-none row-span-4 p-6 md:p-8">
-                    <p className="font-display text-muted-foreground text-xl leading-relaxed md:text-3xl">
-                      {description.heading}
-                    </p>
+                    <AnimatePresence mode="wait">
+                      <motion.p
+                        key={activeTab}
+                        initial={{ opacity: 0, filter: "blur(8px)" }}
+                        animate={{ opacity: 1, filter: "blur(0px)" }}
+                        exit={{ opacity: 0, filter: "blur(8px)" }}
+                        transition={{ duration: 0.25, ease: "easeInOut" }}
+                        className="font-display text-muted-foreground text-xl leading-relaxed md:text-3xl"
+                      >
+                        {description.heading}
+                      </motion.p>
+                    </AnimatePresence>
                   </div>
                   <div className="row-span-2 flex flex-row items-center gap-4 px-6 py-4">
                     <h2 className="text-muted-foreground text-base font-medium">
                       How developers use Stud
                     </h2>
-                    <div className="bg-muted text-muted-foreground inline-flex w-fit items-center justify-center rounded-lg p-1 border-border h-12 border">
-                      <button
-                        onClick={() => setActiveTab("roblox")}
-                        className={`inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md px-5 py-2.5 text-base font-medium transition-colors ${
-                          activeTab === "roblox"
-                            ? "bg-background text-foreground border-border border"
-                            : "border border-transparent text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        Roblox
-                      </button>
-                      <button
-                        onClick={() => setActiveTab("general")}
-                        className={`inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md px-5 py-2.5 text-base font-medium transition-colors ${
-                          activeTab === "general"
-                            ? "bg-background text-foreground border-border border"
-                            : "border border-transparent text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        General
-                      </button>
-                      <button
-                        onClick={() => setActiveTab("scripts")}
-                        className={`inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md px-5 py-2.5 text-base font-medium transition-colors ${
-                          activeTab === "scripts"
-                            ? "bg-background text-foreground border-border border"
-                            : "border border-transparent text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        Scripts
-                      </button>
+                    <div className="bg-muted text-muted-foreground inline-flex w-fit items-center justify-center rounded-full p-1 h-12">
+                      {(["roblox", "general", "scripts"] as const).map((tab) => (
+                        <button
+                          key={tab}
+                          onClick={() => setActiveTab(tab)}
+                          className="relative inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-full px-5 py-2.5 text-base font-medium transition-colors"
+                        >
+                          {activeTab === tab && (
+                            <motion.div
+                              layoutId="hero-tab-pill"
+                              className="absolute inset-0 rounded-full bg-background shadow-sm"
+                              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                            />
+                          )}
+                          <span className={`relative z-10 transition-colors duration-200 ${
+                            activeTab === tab
+                              ? "text-foreground"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}>
+                            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                          </span>
+                        </button>
+                      ))}
                     </div>
                   </div>
                 </div>
